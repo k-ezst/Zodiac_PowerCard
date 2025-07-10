@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>12간지 동물 퍼즐</title>
+    <style>
+        :root {
+            --bg-color: #1a1c20;
+            --surface-color: #2c2f36;
+            --primary-text: #f0f2f5;
+            --secondary-text: #a9b1c2;
+            --gold-glow: #ffd700;
+            --green-glow: #00ff87;
+            --blue-glow: #00bfff;
+            --orange-glow: #ffae42;
+            --purple-glow: #da70d6;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        /* --- 시작 화면 --- */
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+            transition: opacity 0.5s ease-out;
+        }
+        #start-screen h1 {
+            font-size: 3em;
+            color: var(--gold-glow);
+            text-shadow: 0 0 15px var(--gold-glow);
+        }
+        .animal-showcase {
+            font-size: 2.5em;
+            margin: 20px 0;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 400px;
+        }
+        #start-button {
+            padding: 15px 40px;
+            font-size: 1.5em;
+            font-weight: bold;
+            border: none;
+            background: linear-gradient(45deg, #6a11cb, #2575fc);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #6a11cb;
+        }
+        .copyright {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.8em;
+            color: var(--secondary-text);
+        }
+        /* --- 게임 컨테이너 --- */
+        .game-container {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            background: var(--surface-color);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            padding: 20px;
+            flex-direction: column;
+            gap: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card.placeholder {
+            opacity: 0.2;
+            background-color: rgba(0,0,0,0.3);
+            border: 2px dashed var(--secondary-text);
+        }
+        .card.placeholder > * { visibility: hidden; }
+        #skip-stage-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: #ffc107;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 0.8em;
+            cursor: pointer;
+            opacity: 0.5;
+            z-index: 150;
+        }
+        #skip-stage-btn:hover { opacity: 1; }
+        .game-header { display: flex; justify-content: space-around; text-align: center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; }
+        .info-box h2 { margin: 0 0 5px 0; font-size: 0.9em; font-weight: 600; color: var(--secondary-text); }
+        .info-box p { margin: 0; font-size: 1.4em; font-weight: 700; transition: transform 0.2s; }
+        .game-board-wrapper { position: relative; }
+        .game-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px; background-color: rgba(0,0,0,0.2); border-radius: 12px; }
+        #effects-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; overflow: hidden; }
+        #effects-layer svg line {
+            stroke-width: 5;
+            stroke-linecap: round;
+            animation: draw-line 0.5s ease-out forwards;
+        }
+        .line-combo { stroke: var(--gold-glow); filter: url(#glow); }
+        .square-combo { stroke: var(--purple-glow); filter: url(#glow); stroke-width: 7; }
+        @keyframes draw-line {
+            from { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+            to { stroke-dashoffset: 0; }
+        }
+        .card { width: 100%; aspect-ratio: 1 / 1.2; background-color: #3e424a; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: grab; transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s, opacity 0.3s; position: relative; user-select: none; border: 2px solid transparent; }
+        .card.dragging { opacity: 0.5; }
+        .card.in-combo { border-color: var(--gold-glow); box-shadow: 0 0 15px var(--gold-glow); transform: scale(1.05); }
+        .card-animal { font-size: 2.2em; line-height: 1; text-shadow: 0 0 5px black; }
+        .card-number { position: absolute; bottom: 4px; right: 6px; font-size: 1.5em; font-weight: 900; color: var(--primary-text); text-shadow: 0 0 5px black; }
+        .card.border-green { box-shadow: 0 0 12px var(--green-glow); border-color: var(--green-glow); }
+        .card.border-blue { box-shadow: 0 0 12px var(--blue-glow); border-color: var(--blue-glow); }
+        .card.border-orange { box-shadow: 0 0 12px var(--orange-glow); border-color: var(--orange-glow); }
+        .floating-text { position: absolute; font-weight: bold; text-shadow: 0 0 8px black; animation: float-up 1.5s ease-out forwards; white-space: nowrap; z-index: 20; }
+        .floating-text.score { color: var(--gold-glow); font-size: 1.8em; }
+        .floating-text.gimmick { color: #00e5ff; font-size: 1.2em; }
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+        }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .modal.show { display: flex; animation: fadeIn 0.3s; }
+        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 12px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); animation: slide-down 0.4s ease-out; min-width: 350px; }
+        .modal-content h2 { margin-top: 0; }
+        .shop-items { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; }
+        .item { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .item-info p { margin: 0; font-size: 0.9em; color: var(--secondary-text); }
+        .item button { padding: 8px 15px; font-size: 0.9em; border: none; background-color: #6a11cb; color: white; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
+        .item button:disabled { background-color: #555; cursor: not-allowed; }
+        #next-stage-button, #restart-button { padding: 12px 25px; font-size: 1em; border: none; background-color: #2575fc; color: white; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-down { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <h1>12간지 퍼즐</h1>
+        <div class="animal-showcase">🐭 🐮 🐯 🐰 🐲 🐍 🐴 🐏 🐵 🐔 🐶 🐷</div>
+        <button id="start-button">게임 시작</button>
+        <div class="copyright">Copyright 2025 @ k-ezst. Licensed under Apache 2.0</div>
+    </div>
+    <div id="game-container" class="game-container"></div>
+    <button id="skip-stage-btn" style="display: none;">Skip Stage</button>
+
+<script>
+// Copyright 2025 @ k-ezst
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+document.addEventListener('DOMContentLoaded', () => {
+    const startScreen = document.getElementById('start-screen');
+    const startButton = document.getElementById('start-button');
+    const gameContainer = document.getElementById('game-container');
+    const skipStageBtn = document.getElementById('skip-stage-btn');
+
+    let gameBoardEl, scoreEl, movesLeftEl, targetScoreEl, stageEl, resultModal, shopModal, nextStageButton, restartButton, effectsLayer, comboSvgGroup;
+    let board = [], score = 0, movesLeft = 0, stage = 1, targetScore = 0;
+    let draggedCardEl = null, isProcessing = false;
+    let playerBuffs = {};
+
+    const ROWS = 5, COLS = 5;
+    const ANIMALS = ['🐭', '🐮', '🐯', '🐰', '🐲', '🐍', '🐴', '🐏', '🐵', '🐔', '🐶', '🐷'];
+    const allItems = {
+        moreMoves: { name: "토끼의 지혜", desc: "다음 스테이지 이동 횟수 +2", cost: 1500, effect: () => playerBuffs.extraMoves = (playerBuffs.extraMoves || 0) + 2 },
+        scoreBoost: { name: "돼지의 저금통", desc: "다음 스테이지 최종 점수 15% 증가", cost: 2500, effect: () => playerBuffs.scoreMultiplier = (playerBuffs.scoreMultiplier || 1) * 1.15 },
+        setNine: { name: "숫자 조작기", desc: "다음 스테이지 시작 시, 카드 하나를 9로 시작", cost: 2000, effect: () => playerBuffs.setNine = true },
+        tigerPower: { name: "호랑이의 용맹", desc: "🐯 조합 강화가 3배로 증폭", cost: 3500, effect: () => playerBuffs.tigerPower = true },
+        dragonBreath: { name: "용의 숨결", desc: "🐲 조합의 주변 강화가 +10으로 증가", cost: 4000, effect: () => playerBuffs.dragonBreath = true },
+        boardReroll: { name: "원숭이의 손길", desc: "즉시 가장 낮은 숫자 카드 5개 교체", cost: 1000, instant: true, effect: () => {
+            const indices = board.map((c, i) => ({...c, index: i})).sort((a, b) => a.number - b.number).slice(0, 5).map(c => c.index);
+            indices.forEach(i => board[i] = generateRandomCardData(stage));
+            updateView();
+        }}
+    };
+
+    startButton.addEventListener('click', () => {
+        startScreen.style.opacity = '0';
+        setTimeout(() => {
+            startScreen.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            skipStageBtn.style.display = 'block';
+            setupGameUIAndListeners();
+            initializeGame();
+        }, 500);
+    });
+
+    skipStageBtn.addEventListener('click', () => {
+        if (!isProcessing) openShop();
+    });
+    
+    function setupGameUIAndListeners() {
+        gameContainer.innerHTML = `
+            <header class="game-header">
+                <div class="info-box"><h2>STAGE</h2><p id="stage">1</p></div>
+                <div class="info-box"><h2>SCORE</h2><p id="score">0</p></div>
+                <div class="info-box"><h2>MOVES</h2><p id="moves-left">10</p></div>
+                <div class="info-box"><h2>GOAL</h2><p id="target-score">1000</p></div>
+            </header>
+            <div class="game-board-wrapper">
+                <div id="game-board" class="game-board"></div>
+                <div id="effects-layer"><svg width="100%" height="100%" style="overflow:visible;"><defs><filter id="glow"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"></feGaussianBlur><feMerge><feMergeNode in="coloredBlur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter></defs><g id="combo-svg-group"></g></svg></div>
+            </div>
+            <div id="result-modal" class="modal"><div class="modal-content"><h2 id="result-title">Game Over</h2><p id="result-message"></p><button id="restart-button">Restart Game</button></div></div>
+            <div id="shop-modal" class="modal"><div class="modal-content"><h2>아이템 상점</h2><p>보유 점수: <span id="shop-score">0</span></p><div id="shop-items" class="shop-items"></div><button id="next-stage-button">다음 스테이지로</button></div></div>`;
+
+        gameBoardEl = document.getElementById('game-board');
+        scoreEl = document.getElementById('score');
+        movesLeftEl = document.getElementById('moves-left');
+        targetScoreEl = document.getElementById('target-score');
+        stageEl = document.getElementById('stage');
+        resultModal = document.getElementById('result-modal');
+        shopModal = document.getElementById('shop-modal');
+        nextStageButton = document.getElementById('next-stage-button');
+        restartButton = document.getElementById('restart-button');
+        effectsLayer = document.getElementById('effects-layer');
+        comboSvgGroup = document.getElementById('combo-svg-group');
+
+        gameBoardEl.addEventListener('dragstart', handleDragStart);
+        gameBoardEl.addEventListener('dragover', (e) => e.preventDefault());
+        gameBoardEl.addEventListener('drop', handleDrop);
+        gameBoardEl.addEventListener('dragend', handleDragEnd);
+        nextStageButton.addEventListener('click', () => advanceToNextStage());
+        restartButton.addEventListener('click', initializeGame);
+        document.getElementById('shop-items').addEventListener('click', handleShopPurchase);
+    }
+
+    function initializeGame() {
+        stage = 1;
+        score = 0;
+        playerBuffs = {};
+        gameBoardEl.innerHTML = '';
+        board = [];
+        for (let i = 0; i < ROWS * COLS; i++) {
+            board.push(generateRandomCardData(stage));
+            gameBoardEl.appendChild(createCardElement(i));
+        }
+        advanceToNextStage(true);
+    }
+
+    function advanceToNextStage(isFirstStage = false) {
+        if (!isFirstStage) stage++;
+        movesLeft = 10 + (playerBuffs.extraMoves || 0);
+        targetScore = Math.floor(1000 * Math.pow(1.35, stage - 1));
+        isProcessing = false;
+        if (playerBuffs.setNine && !isFirstStage) {
+            const randomIndex = Math.floor(Math.random() * board.length);
+            board[randomIndex].number = 9;
+        }
+        playerBuffs = {};
+        updateView();
+        resultModal.classList.remove('show');
+        shopModal.classList.remove('show');
+    }
+
+    function createCardElement(index) {
+        const cardEl = document.createElement('div');
+        cardEl.classList.add('card');
+        cardEl.dataset.index = index;
+        cardEl.draggable = true;
+        cardEl.innerHTML = `<div class="card-animal"></div><div class="card-number"></div>`;
+        return cardEl;
+    }
+
+    function updateView() {
+        board.forEach((cardData, i) => {
+            if (!gameBoardEl.children[i]) return;
+            const cardEl = gameBoardEl.children[i];
+            cardEl.querySelector('.card-animal').textContent = cardData.animal;
+            cardEl.querySelector('.card-number').textContent = cardData.number;
+            cardEl.classList.remove('border-green', 'border-blue', 'border-orange');
+            if (cardData.number >= 30) cardEl.classList.add('border-orange');
+            else if (cardData.number >= 20) cardEl.classList.add('border-blue');
+            else if (cardData.number >= 10) cardEl.classList.add('border-green');
+        });
+        stageEl.textContent = stage;
+        scoreEl.textContent = score;
+        movesLeftEl.textContent = movesLeft;
+        targetScoreEl.textContent = targetScore;
+    }
+
+    function handleDragStart(e) {
+        const card = e.target.closest('.card');
+        if (isProcessing || !card) { e.preventDefault(); return; }
+        draggedCardEl = card;
+        setTimeout(() => card.classList.add('placeholder'), 0);
+    }
+
+    function handleDragEnd(e) {
+        draggedCardEl?.classList.remove('placeholder');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetCard = e.target.closest('.card');
+        if (!draggedCardEl || !targetCard || isProcessing || targetCard === draggedCardEl) return;
+        draggedCardEl.classList.remove('placeholder');
+        processTurn(parseInt(draggedCardEl.dataset.index), parseInt(targetCard.dataset.index));
+    }
+    
+    function handleShopPurchase(e) {
+        if(e.target.tagName !== 'BUTTON' || e.target.disabled) return;
+        const key = e.target.dataset.key;
+        const item = allItems[key];
+        if (score >= item.cost) {
+            score -= item.cost;
+            document.getElementById('shop-score').textContent = score;
+            item.effect();
+            e.target.disabled = true;
+            e.target.textContent = '구매완료';
+            if (item.instant) updateView();
+        }
+    }
+
+    async function processTurn(fromIndex, toIndex) {
+        isProcessing = true;
+        const oldScore = score;
+        const fromData = board[fromIndex];
+        const toData = board[toIndex];
+        
+        if (fromData.animal === toData.animal) {
+            toData.number += fromData.number;
+            board[fromIndex] = generateRandomCardData(stage);
+        } else {
+            [board[fromIndex], board[toIndex]] = [toData, fromData];
+        }
+        
+        movesLeft--;
+        updateView();
+        await new Promise(res => setTimeout(res, 300));
+
+        const combos = findCombos();
+        if (combos.length > 0) {
+            await handleCombos(combos);
+        }
+
+        const scoreDelta = calculateScoreDelta(oldScore);
+        if (scoreDelta > 0) {
+            showFloatingText(`+${scoreDelta}`, toIndex, 'score');
+            score += scoreDelta;
+        }
+
+        updateView();
+        setTimeout(() => {
+            if (movesLeft <= 0) checkStageEnd();
+            else isProcessing = false;
+        }, 600);
+    }
+    
+    async function handleCombos(combos) {
+        combos.sort((a, b) => b.indices.length - a.indices.length);
+        for (const combo of combos) {
+            await showComboEffects(combo);
+            const topLeftIndex = Math.min(...combo.indices);
+            let sum = 0;
+            combo.indices.forEach(i => { sum += board[i].number; });
+            const gimmickResult = applyAnimalGimmicks(combo, sum);
+            board[topLeftIndex].number = gimmickResult.finalSum;
+            board[topLeftIndex].animal = combo.animal;
+            
+            combo.indices.forEach(i => {
+                if (i !== topLeftIndex) board[i] = generateRandomCardData(stage);
+            });
+
+            if (gimmickResult.aoePositions) {
+                gimmickResult.aoePositions.forEach(pos => {
+                    if (pos >= 0 && pos < board.length) board[pos].number += gimmickResult.aoePower;
+                });
+            }
+            updateView();
+            await new Promise(res => setTimeout(res, 300));
+        }
+    }
+
+    function findCombos() {
+        let foundCombos = [];
+        const checkedIndices = new Set();
+        const addCombo = (combo) => {
+            if (combo.indices.some(i => checkedIndices.has(i))) return;
+            foundCombos.push(combo);
+            combo.indices.forEach(i => checkedIndices.add(i));
+        };
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                [[0, 1], [1, 0], [1, 1], [1, -1]].forEach(([dr, dc]) => {
+                    for (let len = 5; len >= 3; len--) {
+                        let line = [], animal = null;
+                        let possible = true;
+                        for (let i = 0; i < len; i++) {
+                            let nr = r + i * dr, nc = c + i * dc;
+                            if (nr >= ROWS || nc < 0 || nc >= COLS) { possible = false; break; }
+                            let index = nr * COLS + nc;
+                            if (i === 0) animal = board[index].animal;
+                            else if (board[index].animal !== animal) { possible = false; break; }
+                            line.push(index);
+                        }
+                        if (possible) addCombo({ type: 'line', animal, indices: line });
+                    }
+                });
+            }
+        }
+        for (let size = 3; size <= 5; size++) {
+            for (let r = 0; r <= ROWS - size; r++) {
+                for (let c = 0; c <= COLS - size; c++) {
+                    let square = [], animal = board[r * COLS + c].animal;
+                    let isSquare = true;
+                    for(let i=0; i<size; i++) for(let j=0; j<size; j++) {
+                        let index = (r+i)*COLS + (c+j);
+                        if(board[index].animal !== animal) { isSquare = false; break; }
+                        square.push(index);
+                    }
+                    if(isSquare) addCombo({ type: 'square', animal, indices: square });
+                }
+            }
+        }
+        return foundCombos;
+    }
+
+    function applyAnimalGimmicks(combo, sum) {
+        let finalSum = sum, aoePositions = null, aoePower = 0;
+        switch(combo.animal) {
+            case '🐯': finalSum *= (playerBuffs.tigerPower ? 3 : 2); break;
+            case '🐲':
+                const center = Math.min(...combo.indices);
+                const r = Math.floor(center / COLS), c = center % COLS;
+                aoePositions = [[r-1,c-1],[r-1,c],[r-1,c+1],[r,c-1],[r,c+1],[r+1,c-1],[r+1,c],[r+1,c+1]].map(([nr,nc]) => nr*COLS+nc);
+                aoePower = playerBuffs.dragonBreath ? 10 : 5;
+                break;
+            case '🐭': finalSum += combo.indices.length * 5; break;
+            case '🐴': movesLeft++; break;
+        }
+        return { finalSum, aoePositions, aoePower };
+    }
+
+    function getGimmickText(combo) {
+        if(combo.type === 'square') return `${combo.indices.length}칸 정복!`;
+        switch(combo.animal) {
+            case '🐯': return `호랑이 강화 (${playerBuffs.tigerPower ? 'x3' : 'x2'})!`;
+            case '🐲': return `용의 포효 (주변 강화)!`;
+            case '🐭': return `쥐의 축복 (추가 점수)!`;
+            case '🐴': return `말 질주 (+1 Move)!`;
+            default: return `${combo.indices.length}개 조합!`;
+        }
+    }
+
+    async function showComboEffects(combo) {
+        combo.indices.forEach(i => gameBoardEl.children[i].classList.add('in-combo'));
+        drawComboLines(combo);
+        const gimmickText = getGimmickText(combo);
+        showFloatingText(gimmickText, combo.indices[Math.floor(combo.indices.length / 2)], 'gimmick');
+        await new Promise(res => setTimeout(res, 1200));
+        comboSvgGroup.innerHTML = '';
+        document.querySelectorAll('.card.in-combo').forEach(c => c.classList.remove('in-combo'));
+    }
+
+    function drawComboLines(combo) {
+        const comboTypeClass = combo.type === 'square' ? 'square-combo' : 'line-combo';
+        const points = combo.indices.map(i => {
+            const rect = gameBoardEl.children[i].getBoundingClientRect();
+            const boardRect = gameBoardEl.getBoundingClientRect();
+            return { x: rect.left - boardRect.left + rect.width / 2, y: rect.top - boardRect.top + rect.height / 2 };
+        });
+        if (combo.type === 'line') {
+            for (let i = 0; i < points.length - 1; i++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', points[i].x); line.setAttribute('y1', points[i].y);
+                line.setAttribute('x2', points[i+1].x); line.setAttribute('y2', points[i+1].y);
+                line.classList.add(comboTypeClass);
+                comboSvgGroup.appendChild(line);
+            }
+        }
+    }
+
+    function showFloatingText(text, index, type) {
+        const textEl = document.createElement('div');
+        textEl.className = `floating-text ${type}`;
+        textEl.textContent = text;
+        const cardEl = gameBoardEl.children[index];
+        if(!cardEl) return;
+        const cardRect = cardEl.getBoundingClientRect();
+        const boardRect = effectsLayer.getBoundingClientRect();
+        textEl.style.left = `${cardRect.left - boardRect.left + cardRect.width / 2 - textEl.offsetWidth / 2}px`;
+        textEl.style.top = `${cardRect.top - boardRect.top + cardRect.height / 2 - textEl.offsetHeight / 2}px`;
+        effectsLayer.appendChild(textEl);
+        setTimeout(() => textEl.remove(), 1500);
+    }
+
+    function calculateScoreDelta(oldScore) {
+        let cardSum = board.reduce((sum, card) => sum + card.number, 0);
+        let newScore = Math.floor(cardSum * (stage * 0.5));
+        let delta = newScore - oldScore;
+        if (stage <= 10 && delta > 9999) delta = 9999;
+        return delta > 0 ? delta : 0;
+    }
+
+    function generateRandomCardData(currentStage) {
+        const stageBonus = Math.min(4, Math.floor(currentStage / 2));
+        const baseNum = Math.floor(Math.random() * 6) + 1 + stageBonus;
+        return { animal: ANIMALS[Math.floor(Math.random() * ANIMALS.length)], number: Math.min(9, baseNum) };
+    }
+
+    function checkStageEnd() {
+        let finalScore = playerBuffs.scoreMultiplier ? Math.floor(score * playerBuffs.scoreMultiplier) : score;
+        score = finalScore;
+        updateView();
+        
+        if (score >= targetScore) {
+            openShop();
+        } else {
+            resultModal.querySelector('#result-title').textContent = 'Game Over';
+            resultModal.querySelector('#result-message').textContent = `목표 ${targetScore}점 달성에 실패했습니다. 최종 점수: ${score}`;
+            resultModal.classList.add('show');
+        }
+    }
+
+    function openShop() {
+        const shopScoreEl = document.getElementById('shop-score');
+        const shopItemsEl = document.getElementById('shop-items');
+        shopScoreEl.textContent = score;
+        shopItemsEl.innerHTML = '';
+        const presentedItems = Object.keys(allItems).sort(() => 0.5 - Math.random()).slice(0, 4);
+        
+        presentedItems.forEach(key => {
+            const item = allItems[key];
+            const itemEl = document.createElement('div');
+            itemEl.classList.add('item');
+            itemEl.innerHTML = `
+                <div class="item-info"><h4>${item.name}</h4><p>${item.desc} (비용: ${item.cost})</p></div>
+                <button data-key="${key}" ${score < item.cost ? 'disabled' : ''}>구매</button>`;
+            shopItemsEl.appendChild(itemEl);
+        });
+        shopModal.classList.add('show');
+    }
+});
+</script>
+</body>
+</html>
