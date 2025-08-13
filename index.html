@@ -65,9 +65,9 @@
             grid-template-columns: repeat(6, 1fr);
             gap: 15px;
             justify-items: center;
-            max-width: 450px;
+            max-width: 90vw;
         }
-        .animal-showcase img { width: 1.2em; height: 1.2em; }
+        .animal-showcase img { width: 1.1em; height: 1.1em; }
         #start-button {
             padding: 15px 40px; font-size: 1.5em; font-weight: bold; border: none;
             background: linear-gradient(45deg, #6a11cb, #2575fc);
@@ -312,6 +312,25 @@
             text-shadow: 1px 1px 2px black;
         }
 
+        /* [MODIFIED] 보스 카드 파괴 애니메이션 */
+        @keyframes shatter-animation {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+            10% { transform: translate(-3px, -3px) rotate(-3deg); }
+            20% { transform: translate(3px, 3px) rotate(3deg); }
+            30% { transform: translate(-3px, 2px) rotate(0deg); }
+            40% { transform: translate(3px, -2px) rotate(4deg); }
+            50% { transform: translate(-3px, 3px) rotate(-2deg); }
+            60% { transform: translate(3px, 2px) rotate(0deg); }
+            70% { transform: translate(-4px, 3px) rotate(-4deg); }
+            80% { transform: translate(3px, -3px) rotate(3deg); }
+            90% { transform: translate(-2px, 3px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg) scale(0.4); opacity: 0; }
+        }
+        .card.cursed-destroy {
+            animation: shatter-animation 0.5s ease-in-out forwards;
+            transform-origin: center;
+        }
+
         .card-animal { 
             font-size: clamp(1.4em, 5vw, 1.8em);
             line-height: 1; 
@@ -485,6 +504,17 @@
         .icon-container span img { width: 100%; height: 100%; }
         .icon-container span.banned { opacity: 0.5; filter: grayscale(1); }
         
+        /* [MODIFIED] 스테이지 동물 아이콘 UI 개선 */
+        #animal-status-bar .icon-container {
+            flex-wrap: nowrap;
+            gap: clamp(4px, 1vw, 6px);
+            overflow-x: auto;
+        }
+        #animal-status-bar .icon-container span {
+            font-size: clamp(1em, 3.5vw, 1.2em);
+            flex-shrink: 0;
+        }
+
         .modal-content { background: var(--surface-color); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); animation: slide-down 0.4s ease-out; min-width: 80%; max-width: 95%; }
         #tooltip-icon { font-size: 2.5em; margin-bottom: 8px; }
         #tooltip-desc { font-size: 1em; color: var(--secondary-text); }
@@ -578,8 +608,7 @@
         <div class="copyright">Copyright 2025 @ k-ezst. Licensed under Apache 2.0</div>
     </div>
     <div id="game-container" class="game-container">
-        <!-- 게임 UI는 JS에서 동적으로 생성 -->
-    </div>
+        </div>
     <div id="tooltip-modal" class="modal">
         <div class="modal-content">
             <h2 id="tooltip-name"></h2>
@@ -611,7 +640,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalAccumulatedScore = 0;
     let draggedCardEl = null, dragClone = null, isProcessing = false, isDragging = false;
     let lastHoveredIndex = -1;
-    let dragStartX, dragStartY, currentX, currentY;
     let animationFrameId = null;
     let relics = {};
     let tempBuffs = {};
@@ -620,6 +648,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialMoves = 10;
     let targetReached = false;
     let animalSelectionCallback = null;
+
+    // [MODIFIED] 드래그 성능 최적화 및 기준점 변경을 위한 변수 추가
+    let currentX, currentY;
+    let dragStartRect = null;
+    let boardRect = null;
+    let cardSize = { width: 0, height: 0 };
+    let gapSize = { x: 0, y: 0 };
+    let paddingSize = { x: 0, y: 0 };
 
     const getEmojiUrl = (emoji) => {
         if (typeof emoji !== 'string' || emoji.length === 0) {
@@ -658,16 +694,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cursedIdx !== -1) {
                 const cardEl = gameBoardEl.children[cursedIdx];
                 if (cardEl) {
+                    // [MODIFIED] 보스 카드 파괴 애니메이션 적용
+                    cardEl.classList.add('cursed-destroy');
                     createShatterEffect(cursedIdx);
-                    cardEl.style.visibility = 'hidden';
                     board[cursedIdx] = null;
                 }
                 
                 setTimeout(() => {
                     if (currentBoss) currentBoss.remainingGoal--;
                     board[cursedIdx] = generateRandomCardData(stage, true);
-                    const cardEl = gameBoardEl.children[cursedIdx];
-                    if(cardEl) cardEl.style.visibility = 'visible';
                     updateView();
                 }, 500);
             }
@@ -735,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         wheelOfTime: { rarity: 'Legendary', name: "시간의 수레바퀴", icon: "☸️", desc: "5번 이동할 때마다 이동 횟수 1을 되돌려받습니다." },
         alchemistSecret: { rarity: 'Legendary', name: "연금술사의 비급", icon: "⚗️", desc: "숫자가 100 이상인 카드 두 개를 합치면, 100골드를 주는 황금 카드를 생성합니다." },
         ancientCalendar: { rarity: 'Common', name: "오래된 달력", icon: "🗓️", desc: "12번 이동할 때마다, 무작위 카드 하나가 +12." },
-        brokenCompass: { rarity: 'Common', name: "고장난 나침반", icon: "�", desc: "카드 교환 시, 5% 확률로 무작위 동물로 변경됩니다." },
+        brokenCompass: { rarity: 'Common', name: "고장난 나침반", icon: "🧭", desc: "카드 교환 시, 5% 확률로 무작위 동물로 변경됩니다." },
         smallPouch: { rarity: 'Common', name: "작은 주머니", icon: "👝", desc: "스테이지 시작 시 10골드를 가지고 시작합니다." },
         whetstone: { rarity: 'Common', name: "숫돌", icon: "🔪", desc: "카드 합체 시, 10% 확률로 결과값 +10." },
         fourLeafClover: { rarity: 'Common', name: "네잎클로버", icon: "🍀", desc: "모든 확률 기반 유물의 발동 확률이 +2% 증가합니다." },
@@ -798,8 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 destroyedIndices.forEach(i => {
                     const cardEl = gameBoardEl.children[i];
                     if (cardEl) {
+                        // [MODIFIED] 보스 카드 파괴 애니메이션 적용
+                        cardEl.classList.add('cursed-destroy');
                         createShatterEffect(i);
-                        cardEl.style.visibility = 'hidden';
                         b[i] = null; 
                     }
                 });
@@ -807,8 +843,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     destroyedIndices.forEach(i => {
                         b[i] = generateRandomCardData(stage, true);
-                        const cardEl = gameBoardEl.children[i];
-                        if(cardEl) cardEl.style.visibility = 'visible';
                     });
                     updateView();
                 }, 500);
@@ -835,20 +869,20 @@ document.addEventListener('DOMContentLoaded', () => {
             <header class="game-header">
                 <div class="info-box"><h2>STAGE</h2><p id="stage">1</p></div>
                 <div class="info-box-large">
-                     <div class="progress-bar-bg">
-                         <div id="score-progress-fill" class="progress-bar-fill">
-                             <div class="progress-text-container">
-                                 <span id="current-score-text" class="progress-text"></span>
-                             </div>
-                         </div>
-                         <div class="target-label">Target</div>
-                         <div id="target-text-container" class="target-text-container"><span id="target-score-text">1000</span></div>
-                         <div id="score-target-marker" class="progress-target-marker"></div>
-                     </div>
-                     <div class="header-stats-overlay">
-                         <span id="moves-display" class="header-stat">Move 10 / 10</span>
-                         <span id="gold-display" class="header-stat">💰 0</span>
-                     </div>
+                    <div class="progress-bar-bg">
+                        <div id="score-progress-fill" class="progress-bar-fill">
+                            <div class="progress-text-container">
+                                <span id="current-score-text" class="progress-text"></span>
+                            </div>
+                        </div>
+                        <div class="target-label">Target</div>
+                        <div id="target-text-container" class="target-text-container"><span id="target-score-text">1000</span></div>
+                        <div id="score-target-marker" class="progress-target-marker"></div>
+                    </div>
+                    <div class="header-stats-overlay">
+                        <span id="moves-display" class="header-stat">Move 10 / 10</span>
+                        <span id="gold-display" class="header-stat">💰 0</span>
+                    </div>
                 </div>
             </header>
             <div id="animal-status-bar" class="status-bar"><h4>이번 스테이지 동물</h4><div class="icon-container"></div></div>
@@ -995,13 +1029,13 @@ document.addEventListener('DOMContentLoaded', () => {
     async function processTurn(fromIndex, toIndex, dragCloneForAnimation) {
         if (isProcessing || !board[fromIndex] || !board[toIndex] || board[fromIndex].type !== 'normal') {
             if(dragCloneForAnimation) {
-                 const fromEl = gameBoardEl.children[fromIndex];
-                 const fromRect = fromEl.getBoundingClientRect();
-                 dragCloneForAnimation.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
-                 dragCloneForAnimation.style.left = `${fromRect.left}px`;
-                 dragCloneForAnimation.style.top = `${fromRect.top}px`;
-                 dragCloneForAnimation.style.transform = `translate(0, 0)`;
-                 setTimeout(() => dragCloneForAnimation.remove(), 300);
+                const fromEl = gameBoardEl.children[fromIndex];
+                const fromRect = fromEl.getBoundingClientRect();
+                dragCloneForAnimation.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+                dragCloneForAnimation.style.left = `${fromRect.left}px`;
+                dragCloneForAnimation.style.top = `${fromRect.top}px`;
+                dragCloneForAnimation.style.transform = `translate(0, 0)`;
+                setTimeout(() => dragCloneForAnimation.remove(), 300);
             }
             if(draggedCardEl) draggedCardEl.classList.remove('placeholder');
             return;
@@ -1508,6 +1542,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cardEl = gameBoardEl.children[i];
             if (!cardEl) return;
             
+            // 애니메이션이 진행 중인 보스 카드의 클래스는 초기화하지 않음
             const isDestroying = cardEl.classList.contains('cursed-destroy');
             if (!isDestroying) {
                 cardEl.className = 'card';
@@ -1525,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="card-number"></div>`;
                 
                 const numberEl = cardEl.querySelector('.card-number');
-                const numStr = cardData.number > 100000 ? (cardData.number / 1000).toFixed(1) + 'K' : cardData.number;
+                const numStr = cardData.number > 100000 ? (cardData.number / 1000).toFixed(1) + 'K' : cardData.number.toLocaleString();
                 const isSmall = numStr.length > 4;
 
                 numberEl.textContent = numStr;
@@ -1654,16 +1689,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 position: 'absolute',
                 left: `${centerX}px`,
                 top: `${centerY}px`,
-                width: `${Math.random() * 6 + 3}px`,
+                width: `${Math.random() * 8 + 4}px`,
                 height: particle.style.width,
-                background: `rgba(100, 100, 120, ${Math.random() * 0.5 + 0.5})`,
+                background: `rgba(120, 120, 140, ${Math.random() * 0.5 + 0.5})`, // 석상 색과 비슷하게
                 borderRadius: '2px',
                 pointerEvents: 'none',
                 transition: 'transform 0.5s ease-out, opacity 0.5s ease-out'
             });
             
             const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 40 + 20;
+            const distance = Math.random() * 50 + 30;
             const translateX = Math.cos(angle) * distance;
             const translateY = Math.sin(angle) * distance;
 
@@ -1682,6 +1717,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createCardElement(index) { const c = document.createElement('div'); c.className = 'card'; c.dataset.index = index; return c; }
     
+    // [NEW] 드래그 성능 최적화를 위한 헬퍼 함수
+    function getIndexFromCoords(x, y) {
+        if (!boardRect || x < boardRect.left || x > boardRect.right || y < boardRect.top || y > boardRect.bottom) {
+            return -1;
+        }
+
+        const relX = x - boardRect.left - paddingSize.x;
+        const relY = y - boardRect.top - paddingSize.y;
+
+        if (relX < 0 || relY < 0) return -1;
+
+        const col = Math.floor(relX / (cardSize.width + gapSize.x));
+        const row = Math.floor(relY / (cardSize.height + gapSize.y));
+        
+        const xInCell = relX % (cardSize.width + gapSize.x);
+        const yInCell = relY % (cardSize.height + gapSize.y);
+
+        if (xInCell > cardSize.width || yInCell > cardSize.height) {
+            return -1; // In a gap
+        }
+        
+        if (col >= COLS || row >= ROWS) return -1;
+
+        return row * COLS + col;
+    }
+
+    // [MODIFIED] 드래그 시작 함수 (최적화 및 기준점 변경 적용)
     function handleDragStart(e) {
         if (isProcessing || isDragging) return;
         const card = e.target.closest('.card');
@@ -1689,19 +1751,34 @@ document.addEventListener('DOMContentLoaded', () => {
         
         isDragging = true; 
         draggedCardEl = card;
+        dragStartRect = card.getBoundingClientRect();
         
-        const rect = card.getBoundingClientRect();
+        // --- 드래그 성능 최적화를 위한 계산 (시작 시 한 번만) ---
+        boardRect = gameBoardEl.getBoundingClientRect();
+        const firstCardRect = gameBoardEl.children[0]?.getBoundingClientRect();
+        const secondCardRect = gameBoardEl.children[1]?.getBoundingClientRect();
+        const cardBelowRect = gameBoardEl.children[COLS]?.getBoundingClientRect();
+        if(firstCardRect && secondCardRect && cardBelowRect) {
+            cardSize.width = firstCardRect.width;
+            cardSize.height = firstCardRect.height;
+            gapSize.x = secondCardRect.left - firstCardRect.right;
+            gapSize.y = cardBelowRect.top - firstCardRect.bottom;
+            const computedStyle = getComputedStyle(gameBoardEl);
+            paddingSize.x = parseFloat(computedStyle.paddingLeft);
+            paddingSize.y = parseFloat(computedStyle.paddingTop);
+        }
+        // --- 계산 끝 ---
+        
         dragClone = card.cloneNode(true);
         Object.assign(dragClone.style, { 
             position: 'fixed', 
-            width: `${rect.width}px`, 
-            height: `${rect.height}px`, 
+            width: `${dragStartRect.width}px`, 
+            height: `${dragStartRect.height}px`, 
             zIndex: '1000', 
             pointerEvents: 'none', 
             transition: 'none', 
-            left: `${rect.left}px`, 
-            top: `${rect.top}px`,
-            transform: 'scale(1.1)',
+            left: `${dragStartRect.left}px`, 
+            top: `${dragStartRect.top}px`,
             boxShadow: '0 8px 25px rgba(0,0,0,0.4)'
         });
         document.body.appendChild(dragClone);
@@ -1709,22 +1786,26 @@ document.addEventListener('DOMContentLoaded', () => {
         card.classList.add('placeholder');
         
         const touch = e.touches ? e.touches[0] : e;
-        dragStartX = touch.clientX; 
-        dragStartY = touch.clientY;
         currentX = touch.clientX; 
         currentY = touch.clientY;
         
         animationFrameId = requestAnimationFrame(onDragAnimation);
     }
 
+    // [MODIFIED] 드래그 애니메이션 함수 (터치 기준점 변경)
     function onDragAnimation() {
         if (!isDragging || !dragClone) return;
-        const dx = currentX - dragStartX;
-        const dy = currentY - dragStartY;
-        dragClone.style.transform = `translate(${dx}px, ${dy}px) scale(1.1)`;
+        
+        // 현재 커서 위치에 카드의 우측 하단이 오도록 transform 계산
+        const translateX = currentX - dragStartRect.left - dragStartRect.width;
+        const translateY = currentY - dragStartRect.top - dragStartRect.height;
+        
+        dragClone.style.transform = `translate(${translateX}px, ${translateY}px) scale(1.1)`;
+        
         animationFrameId = requestAnimationFrame(onDragAnimation);
     }
 
+    // [MODIFIED] 드래그 이동 함수 (최적화 적용)
     function handleDragMove(e) {
         if (!isDragging || !dragClone) return;
         if (e.cancelable) e.preventDefault();
@@ -1737,11 +1818,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gameBoardEl.children[lastHoveredIndex].classList.remove('merge-preview', 'swap-preview');
         }
 
-        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetCard = targetEl ? targetEl.closest('.card') : null;
-        const newHoveredIndex = targetCard ? parseInt(targetCard.dataset.index) : -1;
+        const newHoveredIndex = getIndexFromCoords(touch.clientX, touch.clientY);
+        const targetCard = newHoveredIndex !== -1 ? gameBoardEl.children[newHoveredIndex] : null;
         
-        if (newHoveredIndex !== -1 && targetCard !== draggedCardEl) {
+        if (targetCard && newHoveredIndex !== -1 && targetCard !== draggedCardEl) {
             const fromData = board[draggedCardEl.dataset.index];
             const toData = board[newHoveredIndex];
             if (fromData && toData?.type === 'normal') {
@@ -1751,6 +1831,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastHoveredIndex = newHoveredIndex;
     }
 
+    // [MODIFIED] 드래그 종료 함수 (최적화 적용)
     function handleDragEnd(e) {
         if (!isDragging) return;
 
@@ -1768,11 +1849,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const touch = e.changedTouches ? e.changedTouches[0] : e;
-        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetCard = targetEl ? targetEl.closest('.card') : null;
-        const toIndex = targetCard ? parseInt(targetCard.dataset.index) : -1;
+        const toIndex = getIndexFromCoords(touch.clientX, touch.clientY);
+        const targetCard = toIndex !== -1 ? gameBoardEl.children[toIndex] : null;
 
-        if (targetCard && targetCard !== localDraggedEl && board[toIndex]) {
+        if (targetCard && toIndex !== -1 && targetCard !== localDraggedEl && board[toIndex]) {
             processTurn(fromIndex, toIndex, localDragClone);
         } else {
             localDraggedEl.classList.remove('placeholder');
@@ -1809,10 +1889,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!fromEl || !toEl || !dragClone) {
                 dragClone?.remove();
+                fromEl?.classList.remove('placeholder');
                 resolve();
                 return;
             }
 
+            fromEl.classList.remove('placeholder');
             const fromRect = fromEl.getBoundingClientRect();
             const toRect = toEl.getBoundingClientRect();
             
@@ -1829,11 +1911,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             document.body.appendChild(toClone);
             toEl.style.opacity = '0';
+            fromEl.style.opacity = '0';
 
-            dragClone.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
-            dragClone.style.left = `${toRect.left}px`;
-            dragClone.style.top = `${toRect.top}px`;
-            dragClone.style.transform = 'translate(0, 0) scale(1)';
+            dragClone.style.transition = 'transform 0.3s ease-out';
+            
+            const finalTranslateX = toRect.left - dragStartRect.left;
+            const finalTranslateY = toRect.top - dragStartRect.top;
+            dragClone.style.transform = `translate(${finalTranslateX}px, ${finalTranslateY}px) scale(1)`;
 
             const deltaX = fromRect.left - toRect.left;
             const deltaY = fromRect.top - toRect.top;
@@ -1846,6 +1930,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 dragClone.remove();
                 toClone.remove();
                 toEl.style.opacity = '1';
+                fromEl.style.opacity = '1';
                 resolve();
             }, 300);
         });
