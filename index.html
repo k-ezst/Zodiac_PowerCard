@@ -177,7 +177,8 @@
         
         .target-label {
             position: absolute;
-            bottom: -14px;
+            /* [MODIFIED] Target 글자 위치 조정 */
+            bottom: -17px;
             font-size: 0.8em;
             font-weight: bold;
             color: var(--secondary-text);
@@ -665,9 +666,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialMoves = 10;
     let targetReached = false;
     let animalSelectionCallback = null;
-
-    // [MODIFIED] 애니메이션 버그 수정을 위한 상태 변수 추가
     let cardAnimatingState;
+    // [NEW] 새로고침 비용 변수
+    let shopRerollCost;
+    let relicRerollCost;
 
     let currentX, currentY;
     let dragStartRect = null;
@@ -713,14 +715,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cursedIdx !== -1) {
                 const cardEl = gameBoardEl.children[cursedIdx];
                 if (cardEl) {
-                    cardAnimatingState[cursedIdx] = true; // 애니메이션 잠금
+                    cardAnimatingState[cursedIdx] = true;
                     cardEl.classList.add('cursed-destroy');
                     createShatterEffect(cursedIdx);
                     board[cursedIdx] = null;
                 }
                 
                 setTimeout(() => {
-                    cardAnimatingState[cursedIdx] = false; // 애니메이션 잠금 해제
+                    cardAnimatingState[cursedIdx] = false;
                     if (currentBoss) currentBoss.remainingGoal--;
                     board[cursedIdx] = generateRandomCardData(stage, true);
                     updateView();
@@ -853,7 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 destroyedIndices.forEach(i => {
                     const cardEl = gameBoardEl.children[i];
                     if (cardEl) {
-                        cardAnimatingState[i] = true; // 애니메이션 잠금
+                        cardAnimatingState[i] = true;
                         cardEl.classList.add('cursed-destroy');
                         createShatterEffect(i);
                         b[i] = null; 
@@ -862,7 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 setTimeout(() => {
                     destroyedIndices.forEach(i => {
-                        cardAnimatingState[i] = false; // 애니메이션 잠금 해제
+                        cardAnimatingState[i] = false;
                         b[i] = generateRandomCardData(stage, true);
                     });
                     updateView();
@@ -999,6 +1001,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gold += 10;
         }
 
+        // [NEW] 새로고침 비용 초기화
+        shopRerollCost = 100;
+        relicRerollCost = 100;
+
         targetReached = false;
         currentBoss = null;
         selectActiveAnimals();
@@ -1015,7 +1021,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (relics.shedSkinOnceMore) tempBuffs.snakeSkinUsed = 0;
         else if (relics.snakeShedSkin) tempBuffs.snakeSkinUsed = false;
 
-        targetScore = currentBoss ? 0 : Math.floor((1000 + (stage - 1) * 600) * Math.pow(1.04, stage - 1));
+        // [MODIFIED] 목표 점수 공식 수정
+        if (currentBoss) {
+            targetScore = 0;
+        } else {
+            const baseLinear = 1000 + (stage - 1) * 600;
+            if (stage <= 20) {
+                targetScore = Math.floor(baseLinear * 3);
+            } else {
+                const stage20Score = (1000 + (19 * 600)) * 3;
+                const stagesAfter20 = stage - 20;
+                targetScore = Math.floor(stage20Score * Math.pow(1.07, stagesAfter20));
+            }
+        }
         
         if (relics.trainingWeight) targetScore = Math.floor(targetScore * 1.1);
         if (relics.chaosOrb) targetScore = Math.floor(targetScore * 0.8);
@@ -1323,10 +1341,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h2 class="stage-clear-text">STAGE CLEAR!</h2>
                 <p style="font-size: 1.1em; color: var(--secondary-text);">보유 골드: <span id="shop-gold" style="color: var(--gold-color); font-weight: bold;">${gold}</span></p>
                 <div class="shop-container"><div id="shop-items" class="shop-items"></div></div>
-                <button id="next-stage-button" class="action-button">다음 스테이지로</button>
+                <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                    <button id="reroll-shop-button" class="action-button" style="background-color: var(--green-glow); color: black;">상점 새로고침 (${shopRerollCost}G)</button>
+                    <button id="next-stage-button" class="action-button">다음 스테이지로</button>
+                </div>
             `;
             populateShop();
             document.getElementById('next-stage-button').addEventListener('click', () => advanceToNextStage());
+            document.getElementById('reroll-shop-button').addEventListener('click', handleShopReroll);
         }
         stageEndScreen.style.display = 'flex';
     }
@@ -1342,6 +1364,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ratio > 1.0) return { grade: 'B', comment: '준수한 플레이어입니다!' };
         if (ratio > 0.7) return { grade: 'C', comment: '조금만 더 노력해봐요!' };
         return { grade: 'D', comment: '성장의 여지가 많습니다!' };
+    }
+
+    // [NEW] 상점 새로고침 핸들러
+    function handleShopReroll() {
+        const btn = document.getElementById('reroll-shop-button');
+        if (gold >= shopRerollCost) {
+            gold -= shopRerollCost;
+            shopRerollCost = Math.floor(shopRerollCost * 1.5); // 비용 증가
+            document.getElementById('shop-gold').textContent = gold;
+            populateShop();
+            btn.textContent = `상점 새로고침 (${shopRerollCost}G)`;
+            if (gold < shopRerollCost) {
+                btn.disabled = true;
+            }
+        } else {
+            btn.disabled = true;
+        }
     }
 
     function populateShop() {
@@ -1370,6 +1409,7 @@ document.addEventListener('DOMContentLoaded', () => {
             shopItemsContainer.appendChild(itemEl);
         });
         shopItemsContainer.addEventListener('click', handleShopPurchase);
+        document.getElementById('reroll-shop-button').disabled = gold < shopRerollCost;
     }
 
     function handleShopPurchase(e) {
@@ -1407,6 +1447,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const itemCost = Math.round(allItems[itemKey].cost * costMultiplier);
                 if (gold < itemCost) btn.disabled = true;
             });
+            document.getElementById('reroll-shop-button').disabled = gold < shopRerollCost;
         }
     }
 
@@ -1444,24 +1485,26 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipModal.querySelector('#tooltip-desc').textContent = `[${RARITY_KR[relic.rarity]}] ${relic.desc}`;
         tooltipModal.classList.add('show');
     }
+    
+    // [NEW] 유물 새로고침 핸들러
+    function handleRelicReroll() {
+        const btn = document.getElementById('reroll-relic-button');
+        if (gold >= relicRerollCost) {
+            gold -= relicRerollCost;
+            relicRerollCost = Math.floor(relicRerollCost * 1.5);
+            populateRelicChoices();
+        }
+    }
 
-    function showRelicSelectionScreen() {
-        const contentEl = document.getElementById('relic-selection-content');
+    // [MODIFIED] 유물 선택 화면 로직 분리
+    function populateRelicChoices() {
+        const relicItemsContainer = document.getElementById('relic-items');
+        if (!relicItemsContainer) return;
+        relicItemsContainer.innerHTML = ''; // Clear previous choices
+
         const available = Object.entries(allRelics).filter(([key]) => !relics[key]);
         const selection = available.sort(() => 0.5 - Math.random()).slice(0, 3);
 
-        if (selection.length === 0) {
-            continueToNextStage();
-            return;
-        }
-
-        contentEl.innerHTML = `
-            <h2 class="relic-title-text">유물 획득</h2>
-            <p>다음 스테이지를 위한 유물을 하나 선택하세요.</p>
-            <div class="relic-container"><div id="relic-items" class="relic-items"></div></div>
-        `;
-        
-        const relicItemsContainer = contentEl.querySelector('#relic-items');
         selection.forEach(([key, relic]) => {
             const relicEl = document.createElement('div');
             relicEl.className = 'relic-item';
@@ -1471,24 +1514,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="relic-info">
                     <h4>${relic.name}</h4>
                     <p>[${RARITY_KR[relic.rarity]}] ${relic.desc}</p>
-                </div>
-            `;
+                </div>`;
             relicItemsContainer.appendChild(relicEl);
         });
 
-        relicItemsContainer.addEventListener('click', handleRelicSelection);
+        const rerollBtn = document.getElementById('reroll-relic-button');
+        if(rerollBtn) {
+            rerollBtn.textContent = `유물 새로고침 (${relicRerollCost}G)`;
+            rerollBtn.disabled = gold < relicRerollCost;
+        }
+    }
+
+    function showRelicSelectionScreen() {
+        const available = Object.entries(allRelics).filter(([key]) => !relics[key]);
+        if (available.length === 0) {
+            continueToNextStage();
+            return;
+        }
+
+        const contentEl = document.getElementById('relic-selection-content');
+        contentEl.innerHTML = `
+            <h2 class="relic-title-text">유물 획득</h2>
+            <p>다음 스테이지를 위한 유물을 하나 선택하세요. (보유 골드: <span style="color: var(--gold-color);">${gold}G</span>)</p>
+            <div class="relic-container"><div id="relic-items" class="relic-items"></div></div>
+            <button id="reroll-relic-button" class="action-button" style="background-color: var(--green-glow); color: black; margin-top: 10px;">유물 새로고침 (${relicRerollCost}G)</button>`;
+        
+        populateRelicChoices();
+
+        document.getElementById('relic-items').addEventListener('click', handleRelicSelection, { once: true });
+        document.getElementById('reroll-relic-button').addEventListener('click', handleRelicReroll);
         relicSelectionScreen.style.display = 'flex';
     }
 
     function handleRelicSelection(e) {
         const target = e.target.closest('.relic-item');
-        if (!target) return;
+        if (!target) {
+            // If the click was not on an item, re-add the listener
+            document.getElementById('relic-items').addEventListener('click', handleRelicSelection, { once: true });
+            return;
+        };
         
         const key = target.dataset.key;
         relics[key] = allRelics[key];
         
         relicSelectionScreen.style.display = 'none';
-        target.parentElement.removeEventListener('click', handleRelicSelection);
         
         showFloatingText(`유물 획득: ${allRelics[key].icon}`, 12, 'gimmick');
         continueToNextStage();
@@ -1561,7 +1630,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateView() {
         board.forEach((cardData, i) => {
-            // [MODIFIED] 애니메이션 중인 카드는 업데이트 건너뛰기
             if (cardAnimatingState[i]) return;
 
             const cardEl = gameBoardEl.children[i];
@@ -1857,7 +1925,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lastHoveredIndex = newHoveredIndex;
     }
 
-    // [MODIFIED] 드래그 종료 시 교체 판정 기준 수정
     function handleDragEnd(e) {
         if (!isDragging) return;
 
