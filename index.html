@@ -2,566 +2,1991 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>12간지 동물 퍼즐</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Zodiac PowerCard (최종 밸런스 수정)</title>
     <style>
         :root {
             --bg-color: #1a1c20;
             --surface-color: #2c2f36;
             --primary-text: #f0f2f5;
             --secondary-text: #a9b1c2;
-            --gold-glow: #ffd700;
-            --green-glow: #00ff87;
-            --blue-glow: #00bfff;
-            --orange-glow: #ffae42;
+            --gold-color: #ffd700;
+            --red-glow: #ff4747;
             --purple-glow: #da70d6;
+            --orange-glow: #ffae42;
+            --blue-glow: #00bfff;
+            --green-glow: #00ff87;
+            --card-bg: #3e424a;
+        }
+        * { box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none;
+            background-color: var(--bg-color);
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background-color: var(--bg-color);
             color: var(--primary-text);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
+            padding: 10px;
         }
-        /* --- 시작 화면 --- */
-        #start-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color);
+        .game-wrapper {
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 200;
-            text-align: center;
-            transition: opacity 0.5s ease-out;
         }
-        #start-screen h1 {
-            font-size: 3em;
-            color: var(--gold-glow);
-            text-shadow: 0 0 15px var(--gold-glow);
+        #start-screen, .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(26, 28, 32, 0.9);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 200; text-align: center;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
         }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            visibility: hidden; opacity: 0;
+        }
+        .modal.show { visibility: visible; opacity: 1; animation: fadeIn 0.3s; }
+        #start-screen h1 { font-size: clamp(2em, 10vw, 3em); color: var(--gold-color); text-shadow: 0 0 15px var(--gold-color); }
         .animal-showcase {
-            font-size: 2.5em;
+            font-size: clamp(2em, 10vw, 3em);
             margin: 20px 0;
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
             gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 400px;
+            justify-items: center;
+            max-width: 450px;
         }
+        .animal-showcase img { width: 1.2em; height: 1.2em; }
         #start-button {
-            padding: 15px 40px;
-            font-size: 1.5em;
-            font-weight: bold;
-            border: none;
+            padding: 15px 40px; font-size: 1.5em; font-weight: bold; border: none;
             background: linear-gradient(45deg, #6a11cb, #2575fc);
-            color: white;
-            border-radius: 12px;
-            cursor: pointer;
+            color: white; border-radius: 12px; cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        #start-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px #6a11cb;
-        }
-        .copyright {
-            position: absolute;
-            bottom: 20px;
-            font-size: 0.8em;
-            color: var(--secondary-text);
-        }
-        /* --- 게임 컨테이너 --- */
+        #start-button:hover { transform: scale(1.05); box-shadow: 0 0 20px #6a11cb; }
+        .copyright { position: absolute; bottom: 10px; font-size: 0.7em; color: var(--secondary-text); }
         .game-container {
             display: none;
             width: 100%;
             max-width: 600px;
+            height: 100%;
+            max-height: 95vh;
             background: var(--surface-color);
             border-radius: 16px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            padding: 20px;
+            padding: clamp(10px, 2vw, 15px);
             flex-direction: column;
-            gap: 15px;
+            gap: clamp(5px, 1.5vh, 10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
         }
-        .card.placeholder {
-            opacity: 0.2;
-            background-color: rgba(0,0,0,0.3);
-            border: 2px dashed var(--secondary-text);
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            padding: clamp(8px, 2vw, 12px);
+            border-radius: 12px;
+            gap: clamp(8px, 2vw, 12px);
         }
-        .card.placeholder > * { visibility: hidden; }
-        #skip-stage-btn {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background-color: #ffc107;
-            color: black;
-            border: none;
-            border-radius: 5px;
-            padding: 5px 10px;
+        .info-box {
+            text-align: center;
+        }
+        .info-box h2 {
+            margin: 0 0 2px 0;
             font-size: 0.8em;
+            font-weight: 600;
+            color: var(--secondary-text);
+        }
+        .info-box p {
+            margin: 0;
+            font-size: clamp(1.2em, 3.5vw, 1.5em);
+            font-weight: 700;
+        }
+        .info-box-large {
+            flex-grow: 1;
+            position: relative;
+            padding-top: 10px;
+        }
+        .progress-bar-bg {
+            width: 100%;
+            height: 24px;
+            background-color: #1a1c20;
+            border-radius: 12px;
+            position: relative;
+            overflow: visible; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 12px;
+            transition: width 0.4s ease-out, background-color 0.4s ease-in-out;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        
+        .progress-target-marker {
+            position: absolute;
+            bottom: -15px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 15px solid var(--gold-color);
+            transform: translateX(-50%);
+            z-index: 2;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+            transition: transform 0.3s ease;
+        }
+        .progress-target-marker.target-reached-effect {
+            animation: target-pulse 0.6s ease-in-out;
+        }
+        @keyframes target-pulse {
+            50% { transform: translateX(-50%) scale(1.4); }
+        }
+        
+        .target-text-container {
+            position: absolute;
+            top: -32px;
+            transform: translateX(-50%);
+            font-size: 1.1em;
+            font-weight: 900;
+            color: var(--primary-text);
+            background-color: var(--surface-color);
+            padding: 3px 10px;
+            border-radius: 8px;
+            z-index: 3;
+            white-space: nowrap;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            border: 1px solid var(--gold-color);
+        }
+        
+        .target-label {
+            position: absolute;
+            bottom: -14px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: var(--secondary-text);
+            transform: translateX(-160%);
+            white-space: nowrap;
+        }
+
+        .progress-text-container {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            padding: 0 8px;
+        }
+        .progress-text {
+            font-size: clamp(0.8em, 2.8vw, 1.0em);
+            font-weight: 700;
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+            white-space: nowrap;
+        }
+        .progress-text.score-updated {
+            animation: score-pop 0.3s ease-out;
+        }
+        @keyframes score-pop {
+            50% { transform: scale(1.2); }
+        }
+        .header-stats-overlay {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 10px 0 10px;
+        }
+        .header-stat {
+            font-size: clamp(0.9em, 2.8vw, 1.1em);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+        .header-stat.ui-update-effect {
+            animation: ui-shake 0.4s ease-in-out;
+            color: var(--gold-color);
+        }
+        @keyframes ui-shake {
+            25% { transform: scale(1.2) rotate(-5deg); }
+            75% { transform: scale(1.2) rotate(5deg); }
+        }
+
+        .color-red { background: linear-gradient(90deg, #c83a3a, var(--red-glow)); }
+        .color-yellow { background: linear-gradient(90deg, #d4a017, var(--orange-glow)); }
+        .color-green { background: linear-gradient(90deg, #008f5a, var(--green-glow)); }
+        .color-blue { background: linear-gradient(90deg, #007bff, var(--blue-glow)); }
+        .color-gold { background: linear-gradient(90deg, #b8860b, var(--gold-color)); }
+
+        .game-board-wrapper {
+            position: relative;
+            flex-grow: 1;
+            min-height: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1vh 0;
+        }
+        
+        .board-container {
+            position: relative;
+            width: 100%;
+            height: auto;
+            max-width: 340px;
+            max-height: 100%;
+            aspect-ratio: 5 / 7;
+        }
+
+        #game-board, #effects-layer, #html-effects-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #html-effects-layer {
+            pointer-events: none;
+            z-index: 20;
+            overflow: visible;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 2%;
+            padding: 2%;
+            z-index: 1;
+        }
+        
+        .card { 
+            aspect-ratio: 5 / 7;
+            background: linear-gradient(145deg, #4a4e56, #34373d);
+            border-radius: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            cursor: grab; 
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative; 
+            user-select: none; 
+            border: 1px solid #2a2d32;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3), inset 0 0 2px rgba(255,255,255,0.05);
+            overflow: hidden;
+            padding: 4px;
+        }
+        
+        .card.cursed {
+            background: linear-gradient(145deg, #5c1e1e, #a83232);
+            border: 1px solid var(--red-glow);
+            box-shadow: 0 0 15px var(--red-glow);
+            font-size: 1.5em;
+            color: #1a1c20;
+            text-shadow: 0 0 3px var(--red-glow);
+        }
+        .card.cursed::after {
+            content: 'BOSS';
+            position: absolute;
+            bottom: 4px;
+            font-size: 0.4em;
+            font-weight: bold;
+            color: var(--primary-text);
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .card-animal { 
+            font-size: clamp(1.4em, 5vw, 1.8em);
+            line-height: 1; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 60%;
+            height: auto;
+            aspect-ratio: 1/1;
+            margin: auto;
+        }
+        .card-animal img { width: 100%; height: 100%; }
+        
+        .card-number {
+            position: absolute;
+            font-size: clamp(0.6em, 2.5vw, 0.9em);
+            font-weight: 900;
+            color: var(--primary-text);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            bottom: 5px;
+            right: 8px;
+        }
+        .card-number.small {
+             font-size: clamp(0.5em, 2vw, 0.8em);
+        }
+        
+        .card.shake-effect { animation: shake-effect 0.5s ease-in-out; }
+        @keyframes shake-effect {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .rank-aura-effect {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 150%; 
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0.7;
+            animation: rank-aura-pulse 0.8s ease-out forwards;
+        }
+        @keyframes rank-aura-pulse {
+            from { transform: translate(-50%, -50%) scale(0.5); opacity: 0.7; }
+            to { transform: translate(-50%, -50%) scale(3.5); opacity: 0; }
+        }
+
+        .card.placeholder { opacity: 0.2; background-color: rgba(0,0,0,0.3); border: 2px dashed var(--secondary-text); }
+        .card.placeholder > * { visibility: hidden; }
+        .card.merging { animation: merge-effect 0.4s ease-in-out; z-index: 5; }
+        .card.spawn-effect { animation: spawn-effect 0.4s ease-out; }
+        @keyframes merge-effect { 50% { transform: scale(1.2); box-shadow: 0 0 25px var(--gold-color); } 100% { transform: scale(1); } }
+        @keyframes spawn-effect { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .card.merge-preview {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px 5px var(--gold-color);
+        }
+        .card.swap-preview {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px 3px var(--blue-glow);
+        }
+
+        .card.border-green { box-shadow: 0 0 10px var(--green-glow); border-color: var(--green-glow); }
+        .card.border-blue { box-shadow: 0 0 10px var(--blue-glow); border-color: var(--blue-glow); }
+        .card.border-orange { box-shadow: 0 0 10px var(--orange-glow); border-color: var(--orange-glow); }
+        .card.border-purple { box-shadow: 0 0 12px var(--purple-glow); border-color: var(--purple-glow); }
+        .card.border-red { box-shadow: 0 0 14px var(--red-glow); border-color: var(--red-glow); }
+        .card.border-gold { box-shadow: 0 0 16px var(--gold-color); border-color: var(--gold-color); }
+
+        .floating-text { 
+            position: absolute; 
+            font-weight: bold; 
+            text-shadow: 0 0 8px black; 
+            animation: float-up 1.5s ease-out forwards; 
+            white-space: nowrap; 
+            z-index: 20; 
+            font-size: 1.2em;
+            transform: translate(-50%, -50%);
+            color: var(--effect-color, var(--primary-text));
+        }
+        @keyframes float-up { 0% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -250%) scale(1.3); opacity: 0; } }
+        
+        #stage-end-screen, #relic-selection-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26, 28, 32, 0.95);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            animation: fadeIn 0.5s;
+        }
+        #stage-end-content, #relic-selection-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .stage-clear-text, .relic-title-text { 
+            font-size: clamp(2em, 10vw, 3em); 
+            color: var(--gold-color); 
+            text-shadow: 0 0 15px var(--gold-color); 
+            animation: pulse-clear 1.5s infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes pulse-clear { 50% { transform: scale(1.05); } }
+        
+        .shop-container, .relic-container {
+            width: 100%;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .shop-items, .relic-items { 
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .item, .relic-item { 
+            background: rgba(0,0,0,0.3); 
+            padding: 12px; 
+            border-radius: 8px; 
+            text-align: left; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 0.9em; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .relic-item {
             cursor: pointer;
-            opacity: 0.5;
-            z-index: 150;
+            transition: background-color 0.2s, transform 0.2s;
         }
-        #skip-stage-btn:hover { opacity: 1; }
-        .game-header { display: flex; justify-content: space-around; text-align: center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; }
-        .info-box h2 { margin: 0 0 5px 0; font-size: 0.9em; font-weight: 600; color: var(--secondary-text); }
-        .info-box p { margin: 0; font-size: 1.4em; font-weight: 700; transition: transform 0.2s; }
-        .game-board-wrapper { position: relative; }
-        .game-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px; background-color: rgba(0,0,0,0.2); border-radius: 12px; }
-        #effects-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; overflow: hidden; }
-        #effects-layer svg line {
-            stroke-width: 5;
-            stroke-linecap: round;
-            animation: draw-line 0.5s ease-out forwards;
+        .relic-item:hover {
+            background-color: rgba(255,255,255,0.1);
+            transform: scale(1.02);
         }
-        .line-combo { stroke: var(--gold-glow); filter: url(#glow); }
-        .square-combo { stroke: var(--purple-glow); filter: url(#glow); stroke-width: 7; }
-        @keyframes draw-line {
-            from { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
-            to { stroke-dashoffset: 0; }
+        .item-info h4, .relic-info h4 { margin: 0 0 4px 0; font-size: 1.1em; color: var(--primary-text); }
+        .item-info p, .relic-info p { margin: 0; font-size: 0.85em; color: var(--secondary-text); }
+        .relic-icon { font-size: 2em; margin-right: 15px; }
+        .item-cost {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--gold-color);
+            margin-right: 10px;
         }
-        .card { width: 100%; aspect-ratio: 1 / 1.2; background-color: #3e424a; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: grab; transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s, opacity 0.3s; position: relative; user-select: none; border: 2px solid transparent; }
-        .card.dragging { opacity: 0.5; }
-        .card.in-combo { border-color: var(--gold-glow); box-shadow: 0 0 15px var(--gold-glow); transform: scale(1.05); }
-        .card-animal { font-size: 2.2em; line-height: 1; text-shadow: 0 0 5px black; }
-        .card-number { position: absolute; bottom: 4px; right: 6px; font-size: 1.5em; font-weight: 900; color: var(--primary-text); text-shadow: 0 0 5px black; }
-        .card.border-green { box-shadow: 0 0 12px var(--green-glow); border-color: var(--green-glow); }
-        .card.border-blue { box-shadow: 0 0 12px var(--blue-glow); border-color: var(--blue-glow); }
-        .card.border-orange { box-shadow: 0 0 12px var(--orange-glow); border-color: var(--orange-glow); }
-        .floating-text { position: absolute; font-weight: bold; text-shadow: 0 0 8px black; animation: float-up 1.5s ease-out forwards; white-space: nowrap; z-index: 20; }
-        .floating-text.score { color: var(--gold-glow); font-size: 1.8em; }
-        .floating-text.gimmick { color: #00e5ff; font-size: 1.2em; }
-        @keyframes float-up {
-            0% { transform: translateY(0) scale(1); opacity: 1; }
-            100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+        .action-button { 
+            padding: 10px 20px; 
+            font-size: 1.1em; 
+            font-weight: bold; 
+            border: none; 
+            background-color: #2575fc; 
+            color: white; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            width: 100%;
+            margin-top: auto;
         }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .modal.show { display: flex; animation: fadeIn 0.3s; }
-        .modal-content { background: var(--surface-color); padding: 30px; border-radius: 12px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); animation: slide-down 0.4s ease-out; min-width: 350px; }
-        .modal-content h2 { margin-top: 0; }
-        .shop-items { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; }
-        .item { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-        .item-info p { margin: 0; font-size: 0.9em; color: var(--secondary-text); }
-        .item button { padding: 8px 15px; font-size: 0.9em; border: none; background-color: #6a11cb; color: white; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
-        .item button:disabled { background-color: #555; cursor: not-allowed; }
-        #next-stage-button, #restart-button { padding: 12px 25px; font-size: 1em; border: none; background-color: #2575fc; color: white; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
+        .action-button:hover { background-color: #1a63d1; }
+        .action-button:disabled { background-color: #555; cursor: not-allowed; }
+
+        .status-bar { background: rgba(0,0,0,0.2); padding: 6px; border-radius: 8px; text-align: center; flex-shrink: 0; font-size: 0.8em; }
+        .status-bar h4 { margin: 0 0 3px 0; font-size: 0.9em; color: var(--secondary-text); }
+        .icon-container { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+        .icon-container span { font-size: 1.3em; cursor: pointer; position: relative; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em;}
+        .icon-container span img { width: 100%; height: 100%; }
+        .icon-container span.banned { opacity: 0.5; filter: grayscale(1); }
+        
+        .modal-content { background: var(--surface-color); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); animation: slide-down 0.4s ease-out; min-width: 80%; max-width: 95%; }
+        #tooltip-icon { font-size: 2.5em; margin-bottom: 8px; }
+        #tooltip-desc { font-size: 1em; color: var(--secondary-text); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slide-down { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slide-down { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        #effects-layer {
+            pointer-events: none;
+            z-index: 10;
+            overflow: visible;
+        }
+        
+        .combo-path {
+            stroke-width: 6; 
+            stroke-linecap: round;
+            fill: none;
+            stroke: url(#combo-gradient);
+            filter: url(#glow);
+        }
+        
+        @keyframes combo-flow {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        .combo-path.animate {
+            animation: combo-flow 0.5s ease-out forwards;
+        }
+        #stage-skip-button {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0,0,0,0.4);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 50;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        #stage-skip-button:hover {
+            background-color: rgba(0,0,0,0.7);
+            transform: scale(1.1);
+        }
+        #animal-selection-modal .modal-content {
+            gap: 15px;
+        }
+        #animal-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 10px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .animal-select-icon {
+            font-size: 2em;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+        .animal-select-icon:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        .final-grade {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 0 0 20px currentColor;
+        }
+        .grade-S { color: var(--gold-color); }
+        .grade-A { color: var(--purple-glow); }
+        .grade-B { color: var(--blue-glow); }
+        .grade-C { color: var(--green-glow); }
+        .grade-D { color: var(--secondary-text); }
+
     </style>
 </head>
 <body>
+<div class="game-wrapper">
     <div id="start-screen">
-        <h1>12간지 퍼즐</h1>
-        <div class="animal-showcase">🐭 🐮 🐯 🐰 🐲 🐍 🐴 🐏 🐵 🐔 🐶 🐷</div>
+        <h1>Zodiac PowerCard</h1>
+        <div id="animal-showcase" class="animal-showcase"></div>
         <button id="start-button">게임 시작</button>
         <div class="copyright">Copyright 2025 @ k-ezst. Licensed under Apache 2.0</div>
     </div>
-    <div id="game-container" class="game-container"></div>
-    <button id="skip-stage-btn" style="display: none;">Skip Stage</button>
+    <div id="game-container" class="game-container">
+        <!-- 게임 UI는 JS에서 동적으로 생성 -->
+    </div>
+    <div id="tooltip-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="tooltip-name"></h2>
+            <div id="tooltip-icon"></div>
+            <p id="tooltip-desc"></p>
+            <button id="tooltip-close-btn" class="action-button">닫기</button>
+        </div>
+    </div>
+    <div id="animal-selection-modal" class="modal">
+        <div class="modal-content">
+            <h2>동물 선택</h2>
+            <p>효과를 적용할 동물을 선택하세요.</p>
+            <div id="animal-selection-grid"></div>
+        </div>
+    </div>
+</div>
 
 <script>
-// Copyright 2025 @ k-ezst
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 document.addEventListener('DOMContentLoaded', () => {
     const startScreen = document.getElementById('start-screen');
     const startButton = document.getElementById('start-button');
     const gameContainer = document.getElementById('game-container');
-    const skipStageBtn = document.getElementById('skip-stage-btn');
+    const tooltipModal = document.getElementById('tooltip-modal');
+    const animalSelectionModal = document.getElementById('animal-selection-modal');
+    const animalShowcaseEl = document.getElementById('animal-showcase');
 
-    let gameBoardEl, scoreEl, movesLeftEl, targetScoreEl, stageEl, resultModal, shopModal, nextStageButton, restartButton, effectsLayer, comboSvgGroup;
-    let board = [], score = 0, movesLeft = 0, stage = 1, targetScore = 0;
-    let draggedCardEl = null, isProcessing = false;
-    let playerBuffs = {};
+    let gameBoardEl, scoreProgressFillEl, currentScoreTextEl, targetScoreTextEl, movesDisplayEl, goldDisplayEl, effectsLayer, stageEndScreen, targetMarkerEl, targetTextContainerEl, relicSelectionScreen;
+    let board = [], score = 0, movesLeft = 0, stage = 1, targetScore = 0, gold = 0;
+    let totalAccumulatedScore = 0;
+    let draggedCardEl = null, dragClone = null, isProcessing = false, isDragging = false;
+    let lastHoveredIndex = -1;
+    let dragStartX, dragStartY, currentX, currentY;
+    let animationFrameId = null;
+    let relics = {};
+    let tempBuffs = {};
+    let currentBoss = null;
+    let activeAnimals = [];
+    let initialMoves = 10;
+    let targetReached = false;
+    let animalSelectionCallback = null;
 
-    const ROWS = 5, COLS = 5;
-    const ANIMALS = ['🐭', '🐮', '🐯', '🐰', '🐲', '🐍', '🐴', '🐏', '🐵', '🐔', '🐶', '🐷'];
-    const allItems = {
-        moreMoves: { name: "토끼의 지혜", desc: "다음 스테이지 이동 횟수 +2", cost: 1500, effect: () => playerBuffs.extraMoves = (playerBuffs.extraMoves || 0) + 2 },
-        scoreBoost: { name: "돼지의 저금통", desc: "다음 스테이지 최종 점수 15% 증가", cost: 2500, effect: () => playerBuffs.scoreMultiplier = (playerBuffs.scoreMultiplier || 1) * 1.15 },
-        setNine: { name: "숫자 조작기", desc: "다음 스테이지 시작 시, 카드 하나를 9로 시작", cost: 2000, effect: () => playerBuffs.setNine = true },
-        tigerPower: { name: "호랑이의 용맹", desc: "🐯 조합 강화가 3배로 증폭", cost: 3500, effect: () => playerBuffs.tigerPower = true },
-        dragonBreath: { name: "용의 숨결", desc: "🐲 조합의 주변 강화가 +10으로 증가", cost: 4000, effect: () => playerBuffs.dragonBreath = true },
-        boardReroll: { name: "원숭이의 손길", desc: "즉시 가장 낮은 숫자 카드 5개 교체", cost: 1000, instant: true, effect: () => {
-            const indices = board.map((c, i) => ({...c, index: i})).sort((a, b) => a.number - b.number).slice(0, 5).map(c => c.index);
-            indices.forEach(i => board[i] = generateRandomCardData(stage));
-            updateView();
-        }}
+    const getEmojiUrl = (emoji) => {
+        if (typeof emoji !== 'string' || emoji.length === 0) {
+            console.error("getEmojiUrl received an invalid value:", emoji);
+            return 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/2753.svg'; 
+        }
+        const code = [...emoji].map(char => char.codePointAt(0).toString(16)).join('-');
+        return `https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/${code}.svg`;
     };
+
+    const ALL_ANIMALS = ['🐭', '🐮', '🐯', '🐰', '🐲', '🐍', '🐴', '🐏', '🐵', '🐔', '🐶', '🐷'];
+    const ROWS = 5, COLS = 5;
+
+    const allItems = {
+        moreMoves1: { name: "토끼의 지혜 I", desc: "다음 스테이지 이동 횟수 +2", cost: 100, effect: () => tempBuffs.extraMoves = (tempBuffs.extraMoves || 0) + 2 },
+        moreMoves2: { name: "토끼의 지혜 II", desc: "다음 스테이지 이동 횟수 +4", cost: 250, effect: () => tempBuffs.extraMoves = (tempBuffs.extraMoves || 0) + 4 },
+        goldBoost1: { name: "돼지의 저금통 I", desc: "다음 스테이지 최종 골드 15% 증가", cost: 180, effect: () => tempBuffs.goldMultiplier = (tempBuffs.goldMultiplier || 1) * 1.15 },
+        goldBoost2: { name: "돼지의 저금통 II", desc: "다음 스테이지 최종 골드 30% 증가", cost: 400, effect: () => tempBuffs.goldMultiplier = (tempBuffs.goldMultiplier || 1) * 1.30 },
+        setNine: { name: "숫자 조작기", desc: "다음 스테이지 시작 시, 카드 하나를 9로 시작", cost: 150, effect: () => tempBuffs.setNine = true },
+        upgradeCard: { name: "벼락", desc: `무작위 카드 3개의 숫자를 +${5 + stage}`, cost: 200, instant: true, effect: () => { for(let i=0; i<3; i++) { const idx = Math.floor(Math.random()*25); if(board?.[idx]?.type==='normal') board[idx].number += (5 + stage); } updateView(); } },
+        boardReroll: { name: "원숭이의 손길", desc: "즉시 가장 낮은 숫자 카드 5개 교체", cost: 80, instant: true, effect: () => {
+            const indices = board.map((c, i) => ({...c, index: i})).filter(c => c?.type === 'normal').sort((a, b) => a.number - b.number).slice(0, 5).map(c => c.index);
+            indices.forEach(i => { board[i] = generateRandomCardData(stage, true); });
+            updateView();
+        }},
+        addMoves: { name: "시간 왜곡", desc: "즉시 이동 횟수 +3", cost: 250, instant: true, effect: () => { movesLeft += 3; initialMoves += 3; triggerUiUpdateEffect(movesDisplayEl); updateView(); } },
+        scoreSpike: { name: "일확천금", desc: `즉시 점수 +${500 + stage * 20}`, cost: 350, instant: true, effect: () => { score += (500 + stage * 20); updateView(); } },
+        cardEnchant: { name: "용의 숨결", desc: `가장 높은 숫자 카드 하나에 +${20 + stage * 2}`, cost: 220, instant: true, effect: () => {
+            let maxIdx = -1, maxNum = -1;
+            board.forEach((c, i) => { if(c && c.type === 'normal' && c.number > maxNum) { maxNum = c.number; maxIdx = i; } });
+            if(maxIdx !== -1) board[maxIdx].number += (20 + stage * 2);
+            updateView();
+        }},
+        curseRemoval: { name: "정화의 물약", desc: "보스 스테이지의 저주 카드 하나를 즉시 제거", cost: 300, instant: true, effect: () => {
+            const cursedIdx = board.findIndex(c => c?.type === 'cursed');
+            if (cursedIdx !== -1) {
+                const cardEl = gameBoardEl.children[cursedIdx];
+                if (cardEl) {
+                    createShatterEffect(cursedIdx);
+                    cardEl.style.visibility = 'hidden';
+                    board[cursedIdx] = null;
+                }
+                
+                setTimeout(() => {
+                    if (currentBoss) currentBoss.remainingGoal--;
+                    board[cursedIdx] = generateRandomCardData(stage, true);
+                    const cardEl = gameBoardEl.children[cursedIdx];
+                    if(cardEl) cardEl.style.visibility = 'visible';
+                    updateView();
+                }, 500);
+            }
+        }},
+        doubleNextScore: { name: "증폭기", desc: "다음 콤보 점수를 2배로 획득 (1회)", cost: 180, effect: () => tempBuffs.doubleNextScore = true },
+        stageGoldBoost: { name: "황금 나침반", desc: "이번 스테이지에서 얻는 모든 골드 +20%", cost: 220, effect: () => tempBuffs.stageGoldBoost = (tempBuffs.stageGoldBoost || 1) * 1.2 },
+        guaranteedAnimal: { name: "동물의 부름", desc: "다음 3개의 카드를 지정한 동물로 생성", cost: 120, effect: () => {
+            showAnimalSelectionModal((animal) => {
+                tempBuffs.guaranteedAnimal = animal;
+                tempBuffs.guaranteedAnimalCount = 3;
+            });
+        }},
+        cardRemoval: { name: "블랙홀", desc: "가장 낮은 숫자 카드 하나를 보드에서 제거", cost: 70, instant: true, effect: () => {
+            let minIdx = -1, minNum = Infinity;
+            board.forEach((c, i) => { if(c && c.type === 'normal' && c.number < minNum) { minNum = c.number; minIdx = i; } });
+            if(minIdx !== -1) { board[minIdx] = null; fillEmptyCells(); }
+        }},
+        rerollShop: { name: "새로고침", desc: "상점의 아이템 목록을 즉시 변경합니다.", cost: 50, instant: true, effect: () => { gold -= 50; document.getElementById('shop-gold').textContent = gold; populateShop(); } },
+        comboStarter: { name: "콤보 스타터", desc: "무작위로 인접한 3개 카드를 같은 동물로 변경", cost: 150, instant: true, effect: () => {
+            const startIndex = Math.floor(Math.random() * 25);
+            const neighbors = getNeighborIndices([startIndex], false);
+            if (neighbors.length >= 2) {
+                const targetAnimal = activeAnimals[Math.floor(Math.random() * activeAnimals.length)];
+                if(board[startIndex]) board[startIndex].animal = targetAnimal;
+                if(board[neighbors[0]]) board[neighbors[0]].animal = targetAnimal;
+                if(board[neighbors[1]]) board[neighbors[1]].animal = targetAnimal;
+                updateView();
+            }
+        }},
+        numberSwap: { name: "숫자 교환기", desc: "가장 높은 카드와 가장 낮은 카드의 숫자를 교환", cost: 180, instant: true, effect: () => {
+             let minIdx = -1, minNum = Infinity, maxIdx = -1, maxNum = -1;
+             board.forEach((c, i) => { 
+                 if(c?.type === 'normal') {
+                     if(c.number < minNum) { minNum = c.number; minIdx = i; }
+                     if(c.number > maxNum) { maxNum = c.number; maxIdx = i; }
+                 }
+             });
+             if(minIdx !== -1 && maxIdx !== -1) {
+                 [board[minIdx].number, board[maxIdx].number] = [board[maxIdx].number, board[minIdx].number];
+                 updateView();
+             }
+        }},
+        goldenTouch: { name: "황금의 손길", desc: "무작위 카드 하나를 황금 카드로 변경", cost: 400, instant: true, effect: () => {
+            const normalCards = board.map((c,i) => ({...c, index: i})).filter(c => c.type === 'normal');
+            if(normalCards.length > 0) {
+                const randIdx = normalCards[Math.floor(Math.random() * normalCards.length)].index;
+                board[randIdx].isGold = true;
+                updateView();
+            }
+        }},
+        interest: { name: "이자의 즐거움", desc: "스테이지 클리어 시 보유 골드의 5%를 추가 획득", cost: 150, effect: () => tempBuffs.interest = true },
+    };
+    
+    const RARITY_KR = { Common: '일반', Advanced: '고급', Rare: '희귀', Legendary: '전설' };
+    const allRelics = {
+        miceCrumbs: { rarity: 'Common', name: "쥐의 부스러기", icon: "🧀", desc: "3-콤보가 10%의 추가 점수를 얻습니다." },
+        oxFortitude: { rarity: 'Common', name: "소의 뚝심", icon: "💪", desc: "매 스테이지의 첫 이동은 횟수를 소모하지 않습니다." },
+        rabbitHop: { rarity: 'Common', name: "토끼의 뜀박질", icon: "👟", desc: "일치하지 않는 카드를 교환할 때 10% 확률로 이동 횟수를 소모하지 않습니다." },
+        snakeShedSkin: { rarity: 'Advanced', name: "뱀의 허물", icon: "🐍", desc: "스테이지 당 한 번, 이동 횟수가 0이 되면 2를 추가로 얻습니다." },
+        sheepWool: { rarity: 'Advanced', name: "양의 털뭉치", icon: "🐑", desc: "카드 생성 시 5% 확률로 보드에서 가장 높은 숫자 카드의 복사본이 됩니다." },
+        roosterPerch: { rarity: 'Rare', name: "닭의 횃대", icon: "🐓", desc: `턴 종료 시, 보드에서 가장 높은 숫자 카드 하나가 +${5 + Math.floor(stage / 5)}의 점수를 얻습니다.` },
+        piggyBank: { rarity: 'Rare', name: "상인의 돼지 저금통", icon: "🐖", desc: "상점의 아이템 가격이 영구적으로 10% 할인됩니다." },
+        dragonsOrb: { rarity: 'Rare', name: "용의 여의주", icon: "🔮", desc: "모든 동물의 고유 콤보 효과가 25% 증폭됩니다." },
+        zodiacBlessing: { rarity: 'Legendary', name: "십이지신의 가호", icon: "🌟", desc: "모든 콤보가 점수 계산 시 +1 길이로 취급됩니다." },
+        wheelOfTime: { rarity: 'Legendary', name: "시간의 수레바퀴", icon: "☸️", desc: "5번 이동할 때마다 이동 횟수 1을 되돌려받습니다." },
+        alchemistSecret: { rarity: 'Legendary', name: "연금술사의 비급", icon: "⚗️", desc: "숫자가 100 이상인 카드 두 개를 합치면, 100골드를 주는 황금 카드를 생성합니다." },
+        ancientCalendar: { rarity: 'Common', name: "오래된 달력", icon: "🗓️", desc: "12번 이동할 때마다, 무작위 카드 하나가 +12." },
+        brokenCompass: { rarity: 'Common', name: "고장난 나침반", icon: "�", desc: "카드 교환 시, 5% 확률로 무작위 동물로 변경됩니다." },
+        smallPouch: { rarity: 'Common', name: "작은 주머니", icon: "👝", desc: "스테이지 시작 시 10골드를 가지고 시작합니다." },
+        whetstone: { rarity: 'Common', name: "숫돌", icon: "🔪", desc: "카드 합체 시, 10% 확률로 결과값 +10." },
+        fourLeafClover: { rarity: 'Common', name: "네잎클로버", icon: "🍀", desc: "모든 확률 기반 유물의 발동 확률이 +2% 증가합니다." },
+        trainingWeight: { rarity: 'Common', name: "수련용 추", icon: "🏋️", desc: "이동 횟수가 5 더 많지만, 목표 점수가 10% 증가합니다." },
+        stickyGlove: { rarity: 'Common', name: "끈끈이 장갑", icon: "🧤", desc: "카드 교환 비용이 10% 확률로 0이 됩니다." },
+        tinyAnvil: { rarity: 'Common', name: "작은 모루", icon: "🔨", desc: "턴 종료 시, 가장 낮은 카드 하나의 숫자가 +1." },
+        miceCunning: { rarity: 'Advanced', name: "쥐의 교활함", icon: "🧐", desc: "콤보로 카드를 제거할 때마다, 10% 확률로 1골드 획득." },
+        oxPerseverance: { rarity: 'Advanced', name: "소의 인내", icon: "🧘", desc: "이동 횟수가 3 이하일 때, 콤보 점수 +15%." },
+        tigersClaw: { rarity: 'Advanced', name: "호랑이 발톱", icon: "🐅", desc: "호랑이 콤보가 발생하면, 보드에서 가장 낮은 숫자 카드 하나를 제거합니다." },
+        luckyFoot: { rarity: 'Advanced', name: "행운의 토끼발", icon: "🐇", desc: "7-콤보 이상 발생 시, 이동 횟수 +1." },
+        dragonsMight: { rarity: 'Advanced', name: "용의 위엄", icon: "🐉", desc: "용 콤보 발생 시, 해당 열의 모든 카드가 +5." },
+        stampede: { rarity: 'Advanced', name: "말의 돌진", icon: "🐎", desc: "말 콤보 발생 시, 보드의 모든 말 카드가 +3." },
+        flockTogether: { rarity: 'Advanced', name: "양떼", icon: "🐑", desc: "양 콤보에 포함된 카드 하나당 최종 점수 +2%." },
+        mischief: { rarity: 'Advanced', name: "원숭이의 장난", icon: "🐒", desc: "카드 교환 시, 15% 확률로 두 카드 모두 숫자가 +5." },
+        morningCall: { rarity: 'Advanced', name: "닭의 외침", icon: "🐔", desc: "스테이지 시작 시, 모든 카드의 숫자가 +1." },
+        loyalty: { rarity: 'Advanced', name: "개의 충성심", icon: "🐕", desc: "같은 동물을 연속으로 3번 합치면, 이동 횟수 +1." },
+        gluttony: { rarity: 'Advanced', name: "돼지의 식탐", icon: "🍔", desc: "콤보로 얻는 점수가 1000을 넘을 때마다, 10골드를 추가로 획득." },
+        magnifyingGlass: { rarity: 'Advanced', name: "돋보기", icon: "🔎", desc: "상점에 아이템이 하나 더 등장합니다." },
+        plagueSpread: { rarity: 'Rare', name: "역병 확산", icon: "☣️", desc: "쥐 콤보가 주변 카드 1개의 숫자를 5% 감소시키고, 그만큼 쥐 카드에 더합니다." },
+        unshakable: { rarity: 'Rare', name: "부동심", icon: "🗿", desc: "소 카드는 다른 카드의 효과(숫자 감소 등)에 면역이 됩니다." },
+        burrow: { rarity: 'Rare', name: "굴 파기", icon: "🕳️", desc: "토끼 카드를 합칠 때, 20% 확률로 숫자가 두 배가 됩니다." },
+        venomousTouch: { rarity: 'Rare', name: "독사의 손길", icon: "☠️", desc: "뱀 콤보가 발생하면, 다음 3번의 이동 동안 합쳐지는 카드들의 기본 점수가 +10." },
+        enduranceRun: { rarity: 'Rare', name: "장거리 경주", icon: "🏇", desc: "10번 이동할 때마다, 가장 낮은 숫자 카드 하나가 +10." },
+        peckingOrder: { rarity: 'Rare', name: "서열 정리", icon: "👑", desc: "닭 콤보가 발생하면, 보드에서 가장 낮은 숫자 카드 2개의 위치를 바꿉니다." },
+        guardDog: { rarity: 'Rare', name: "경비견", icon: "🛡️", desc: "보스 스테이지에서 보스의 저주가 1개 덜 생성됩니다." },
+        emergencyKit: { rarity: 'Rare', name: "비상 키트", icon: "🩹", desc: "이동 횟수가 1일 때, 50% 확률로 +2 이동 횟수를 얻습니다." },
+        couponBook: { rarity: 'Rare', name: "쿠폰북", icon: "🎟️", desc: "상점 아이템을 3개 구매할 때마다, 다음 구매는 50% 할인됩니다." },
+        recyclingBin: { rarity: 'Rare', name: "재활용 상자", icon: "♻️", desc: "스테이지에서 남은 카드 숫자의 1%를 다음 스테이지 시작 점수로 가져갑니다 (최대 1000)." },
+        shedSkinOnceMore: { rarity: 'Rare', name: "두 번째 허물", icon: "🐍", desc: "'뱀의 허물' 유물이 스테이지당 두 번 발동합니다." },
+        kingOfTheMountain: { rarity: 'Legendary', name: "산의 왕", icon: "🏔️", desc: "보드에 호랑이 카드가 5개 이상이면 모든 콤보 점수 +10%." },
+        celestialReign: { rarity: 'Legendary', name: "천상의 지배", icon: "🌌", desc: "스테이지 시작 시, 용 카드는 항상 다른 카드보다 높은 숫자로 시작합니다." },
+        goldenFleece: { rarity: 'Legendary', name: "황금 양털", icon: "✨", desc: "양 카드를 포함한 5-콤보 이상 발생 시, 100골드를 획득합니다." },
+        trickstersLuck: { rarity: 'Legendary', name: "사기꾼의 행운", icon: "🎲", desc: "상점에서 아이템 구매 시, 10% 확률로 골드를 소모하지 않습니다." },
+        yearOfFortune: { rarity: 'Legendary', name: "행운의 해", icon: "🧧", desc: "스테이지 클리어 시 받는 골드가 25% 증가합니다." },
+        scholarStone: { rarity: 'Legendary', name: "학자의 돌", icon: "💎", desc: "카드의 숫자가 1000을 넘을 때마다, 영구적으로 모든 콤보 점수 +1%." },
+        crownOfGreed: { rarity: 'Legendary', name: "탐욕의 왕관", icon: "👑", desc: "골드를 500 소모할 때마다, 최대 이동 횟수 +1." },
+        chaosOrb: { rarity: 'Legendary', name: "혼돈의 보주", icon: "🌀", desc: "스테이지 시작 시, 모든 카드가 무작위로 변경되지만, 목표 점수가 20% 감소합니다." }
+    };
+
+    const defaultBoss = {
+        name: "저주받은 석상", goalText: "주변에서 콤보를 일으켜 석상 3개를 파괴하세요!", goalValue: 3,
+        setup: (b) => { 
+            let count = 3;
+            if(relics.guardDog) count--;
+            let p = 0; 
+            while(p < count) { 
+                const i = Math.floor(Math.random() * b.length); 
+                if(b[i]?.type === 'normal') { b[i] = { type: 'cursed' }; p++; } 
+            } 
+        },
+        onCombo: (combo, b) => {
+            let destroyedIndices = [];
+            getNeighborIndices(combo.indices, true).forEach(i => {
+                if (b[i]?.type === 'cursed') {
+                    destroyedIndices.push(i);
+                }
+            });
+            if (destroyedIndices.length > 0) {
+                currentBoss.remainingGoal -= destroyedIndices.length;
+                destroyedIndices.forEach(i => {
+                    const cardEl = gameBoardEl.children[i];
+                    if (cardEl) {
+                        createShatterEffect(i);
+                        cardEl.style.visibility = 'hidden';
+                        b[i] = null; 
+                    }
+                });
+                
+                setTimeout(() => {
+                    destroyedIndices.forEach(i => {
+                        b[i] = generateRandomCardData(stage, true);
+                        const cardEl = gameBoardEl.children[i];
+                        if(cardEl) cardEl.style.visibility = 'visible';
+                    });
+                    updateView();
+                }, 500);
+            }
+        }
+    };
+
+    function setupStartScreen() {
+        animalShowcaseEl.innerHTML = ALL_ANIMALS.map(animal => `<span><img src="${getEmojiUrl(animal)}" alt="${animal}"></span>`).join('');
+    }
 
     startButton.addEventListener('click', () => {
         startScreen.style.opacity = '0';
         setTimeout(() => {
             startScreen.style.display = 'none';
             gameContainer.style.display = 'flex';
-            skipStageBtn.style.display = 'block';
             setupGameUIAndListeners();
             initializeGame();
         }, 500);
     });
 
-    skipStageBtn.addEventListener('click', () => {
-        if (!isProcessing) openShop();
-    });
-    
     function setupGameUIAndListeners() {
         gameContainer.innerHTML = `
             <header class="game-header">
                 <div class="info-box"><h2>STAGE</h2><p id="stage">1</p></div>
-                <div class="info-box"><h2>SCORE</h2><p id="score">0</p></div>
-                <div class="info-box"><h2>MOVES</h2><p id="moves-left">10</p></div>
-                <div class="info-box"><h2>GOAL</h2><p id="target-score">1000</p></div>
+                <div class="info-box-large">
+                     <div class="progress-bar-bg">
+                         <div id="score-progress-fill" class="progress-bar-fill">
+                             <div class="progress-text-container">
+                                 <span id="current-score-text" class="progress-text"></span>
+                             </div>
+                         </div>
+                         <div class="target-label">Target</div>
+                         <div id="target-text-container" class="target-text-container"><span id="target-score-text">1000</span></div>
+                         <div id="score-target-marker" class="progress-target-marker"></div>
+                     </div>
+                     <div class="header-stats-overlay">
+                         <span id="moves-display" class="header-stat">Move 10 / 10</span>
+                         <span id="gold-display" class="header-stat">💰 0</span>
+                     </div>
+                </div>
             </header>
+            <div id="animal-status-bar" class="status-bar"><h4>이번 스테이지 동물</h4><div class="icon-container"></div></div>
+            <div id="relics-display" class="status-bar"><h4>유물</h4><div id="relic-icons" class="icon-container"></div></div>
             <div class="game-board-wrapper">
-                <div id="game-board" class="game-board"></div>
-                <div id="effects-layer"><svg width="100%" height="100%" style="overflow:visible;"><defs><filter id="glow"><feGaussianBlur stdDeviation="3.5" result="coloredBlur"></feGaussianBlur><feMerge><feMergeNode in="coloredBlur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter></defs><g id="combo-svg-group"></g></svg></div>
+                <div class="board-container">
+                    <div id="game-board"></div>
+                    <svg id="effects-layer"></svg>
+                    <div id="html-effects-layer"></div>
+                </div>
             </div>
-            <div id="result-modal" class="modal"><div class="modal-content"><h2 id="result-title">Game Over</h2><p id="result-message"></p><button id="restart-button">Restart Game</button></div></div>
-            <div id="shop-modal" class="modal"><div class="modal-content"><h2>아이템 상점</h2><p>보유 점수: <span id="shop-score">0</span></p><div id="shop-items" class="shop-items"></div><button id="next-stage-button">다음 스테이지로</button></div></div>`;
+            <button id="stage-skip-button" title="스테이지 스킵">»</button>
+            <div id="stage-end-screen" style="display: none;">
+                <div id="stage-end-content"></div>
+            </div>
+            <div id="relic-selection-screen" style="display: none;">
+                 <div id="relic-selection-content"></div>
+            </div>`;
+        
+        document.getElementById('effects-layer').innerHTML = `
+            <defs>
+                <linearGradient id="combo-gradient" gradientTransform="rotate(90)">
+                    <stop offset="0%" stop-color="#fffde4" />
+                    <stop offset="100%" stop-color="#ffd700" />
+                </linearGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="4" result="coloredBlur"></feGaussianBlur>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"></feMergeNode>
+                        <feMergeNode in="SourceGraphic"></feMergeNode>
+                    </feMerge>
+                </filter>
+            </defs>
+        `;
 
         gameBoardEl = document.getElementById('game-board');
-        scoreEl = document.getElementById('score');
-        movesLeftEl = document.getElementById('moves-left');
-        targetScoreEl = document.getElementById('target-score');
-        stageEl = document.getElementById('stage');
-        resultModal = document.getElementById('result-modal');
-        shopModal = document.getElementById('shop-modal');
-        nextStageButton = document.getElementById('next-stage-button');
-        restartButton = document.getElementById('restart-button');
+        scoreProgressFillEl = document.getElementById('score-progress-fill');
+        currentScoreTextEl = document.getElementById('current-score-text');
+        targetScoreTextEl = document.getElementById('target-score-text');
+        movesDisplayEl = document.getElementById('moves-display');
+        goldDisplayEl = document.getElementById('gold-display');
+        targetMarkerEl = document.getElementById('score-target-marker');
+        targetTextContainerEl = document.getElementById('target-text-container');
         effectsLayer = document.getElementById('effects-layer');
-        comboSvgGroup = document.getElementById('combo-svg-group');
+        stageEndScreen = document.getElementById('stage-end-screen');
+        relicSelectionScreen = document.getElementById('relic-selection-screen');
 
-        gameBoardEl.addEventListener('dragstart', handleDragStart);
-        gameBoardEl.addEventListener('dragover', (e) => e.preventDefault());
-        gameBoardEl.addEventListener('drop', handleDrop);
-        gameBoardEl.addEventListener('dragend', handleDragEnd);
-        nextStageButton.addEventListener('click', () => advanceToNextStage());
-        restartButton.addEventListener('click', initializeGame);
-        document.getElementById('shop-items').addEventListener('click', handleShopPurchase);
+        gameBoardEl.addEventListener('mousedown', handleDragStart, { passive: true });
+        gameBoardEl.addEventListener('touchstart', handleDragStart, { passive: true });
+        window.addEventListener('mousemove', handleDragMove, { passive: false });
+        window.addEventListener('touchmove', handleDragMove, { passive: false });
+        window.addEventListener('mouseup', handleDragEnd);
+        window.addEventListener('touchend', handleDragEnd);
+
+        tooltipModal.querySelector('#tooltip-close-btn').addEventListener('click', () => tooltipModal.classList.remove('show'));
+        document.getElementById('relics-display').addEventListener('click', handleRelicIconClick);
+        document.getElementById('stage-skip-button').addEventListener('click', () => checkStageEnd(true));
+        animalSelectionModal.querySelector('#animal-selection-grid').addEventListener('click', handleAnimalSelection);
     }
 
     function initializeGame() {
-        stage = 1;
-        score = 0;
-        playerBuffs = {};
+        stage = 0; score = 0; gold = 0; relics = {}; tempBuffs = {}; totalAccumulatedScore = 0;
         gameBoardEl.innerHTML = '';
         board = [];
         for (let i = 0; i < ROWS * COLS; i++) {
-            board.push(generateRandomCardData(stage));
+            board.push(null);
             gameBoardEl.appendChild(createCardElement(i));
         }
         advanceToNextStage(true);
     }
 
     function advanceToNextStage(isFirstStage = false) {
-        if (!isFirstStage) stage++;
-        movesLeft = 10 + (playerBuffs.extraMoves || 0);
-        targetScore = Math.floor(1000 * Math.pow(1.35, stage - 1));
-        isProcessing = false;
-        if (playerBuffs.setNine && !isFirstStage) {
-            const randomIndex = Math.floor(Math.random() * board.length);
-            board[randomIndex].number = 9;
+        stageEndScreen.style.display = 'none';
+        relicSelectionScreen.style.display = 'none';
+        
+        if (!isFirstStage) {
+            stage++;
+            showRelicSelectionScreen();
+        } else {
+            stage = 1;
+            continueToNextStage();
         }
-        playerBuffs = {};
+    }
+
+    function continueToNextStage() {
+        if (relics.recyclingBin && tempBuffs.recycledScore) {
+            score = tempBuffs.recycledScore;
+        } else {
+            score = 0;
+        }
+        if (relics.smallPouch) {
+            gold += 10;
+        }
+
+        targetReached = false;
+        currentBoss = null;
+        selectActiveAnimals();
+        if (stage > 0 && stage % 3 === 0 && stage < 40) {
+            currentBoss = { ...defaultBoss, remainingGoal: defaultBoss.goalValue };
+        }
+        
+        const moveBonus = Math.floor(stage / 5);
+        initialMoves = 10 + (tempBuffs.extraMoves || 0) + moveBonus;
+        if(relics.trainingWeight) initialMoves += 5;
+
+        movesLeft = initialMoves;
+        if (relics.oxFortitude) tempBuffs.firstMoveUsed = false;
+        if (relics.shedSkinOnceMore) tempBuffs.snakeSkinUsed = 0;
+        else if (relics.snakeShedSkin) tempBuffs.snakeSkinUsed = false;
+
+        targetScore = currentBoss ? 0 : Math.floor((1000 + (stage - 1) * 600) * Math.pow(1.04, stage - 1));
+        
+        if (relics.trainingWeight) targetScore = Math.floor(targetScore * 1.1);
+        if (relics.chaosOrb) targetScore = Math.floor(targetScore * 0.8);
+
+        isProcessing = false;
+        for(let i=0; i<board.length; i++) { board[i] = generateRandomCardData(stage); }
+
+        if (relics.chaosOrb) {
+            board.forEach(card => {
+                if(card) {
+                    card.animal = ALL_ANIMALS[Math.floor(Math.random() * ALL_ANIMALS.length)];
+                    card.number = Math.floor(Math.random() * 10) + 1;
+                }
+            });
+        }
+        if(relics.morningCall) {
+            board.forEach(c => { if(c) c.number++; });
+        }
+        if(relics.celestialReign) {
+            const maxNum = board.reduce((max, c) => c ? Math.max(max, c.number) : max, 0);
+            board.forEach(c => { if(c?.animal === '🐲') c.number = maxNum + 5; });
+        }
+
+        if (tempBuffs.setNine) {
+            const randomIndex = Math.floor(Math.random() * board.length);
+            if(board[randomIndex]) board[randomIndex].number = 9;
+        }
+        if (currentBoss?.setup) { currentBoss.setup(board); }
+        tempBuffs = {};
         updateView();
-        resultModal.classList.remove('show');
-        shopModal.classList.remove('show');
-    }
-
-    function createCardElement(index) {
-        const cardEl = document.createElement('div');
-        cardEl.classList.add('card');
-        cardEl.dataset.index = index;
-        cardEl.draggable = true;
-        cardEl.innerHTML = `<div class="card-animal"></div><div class="card-number"></div>`;
-        return cardEl;
-    }
-
-    function updateView() {
-        board.forEach((cardData, i) => {
-            if (!gameBoardEl.children[i]) return;
-            const cardEl = gameBoardEl.children[i];
-            cardEl.querySelector('.card-animal').textContent = cardData.animal;
-            cardEl.querySelector('.card-number').textContent = cardData.number;
-            cardEl.classList.remove('border-green', 'border-blue', 'border-orange');
-            if (cardData.number >= 30) cardEl.classList.add('border-orange');
-            else if (cardData.number >= 20) cardEl.classList.add('border-blue');
-            else if (cardData.number >= 10) cardEl.classList.add('border-green');
-        });
-        stageEl.textContent = stage;
-        scoreEl.textContent = score;
-        movesLeftEl.textContent = movesLeft;
-        targetScoreEl.textContent = targetScore;
-    }
-
-    function handleDragStart(e) {
-        const card = e.target.closest('.card');
-        if (isProcessing || !card) { e.preventDefault(); return; }
-        draggedCardEl = card;
-        setTimeout(() => card.classList.add('placeholder'), 0);
-    }
-
-    function handleDragEnd(e) {
-        draggedCardEl?.classList.remove('placeholder');
-    }
-
-    function handleDrop(e) {
-        e.preventDefault();
-        const targetCard = e.target.closest('.card');
-        if (!draggedCardEl || !targetCard || isProcessing || targetCard === draggedCardEl) return;
-        draggedCardEl.classList.remove('placeholder');
-        processTurn(parseInt(draggedCardEl.dataset.index), parseInt(targetCard.dataset.index));
     }
     
-    function handleShopPurchase(e) {
-        if(e.target.tagName !== 'BUTTON' || e.target.disabled) return;
-        const key = e.target.dataset.key;
-        const item = allItems[key];
-        if (score >= item.cost) {
-            score -= item.cost;
-            document.getElementById('shop-score').textContent = score;
-            item.effect();
-            e.target.disabled = true;
-            e.target.textContent = '구매완료';
-            if (item.instant) updateView();
+    async function processTurn(fromIndex, toIndex, dragCloneForAnimation) {
+        if (isProcessing || !board[fromIndex] || !board[toIndex] || board[fromIndex].type !== 'normal') {
+            if(dragCloneForAnimation) {
+                 const fromEl = gameBoardEl.children[fromIndex];
+                 const fromRect = fromEl.getBoundingClientRect();
+                 dragCloneForAnimation.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+                 dragCloneForAnimation.style.left = `${fromRect.left}px`;
+                 dragCloneForAnimation.style.top = `${fromRect.top}px`;
+                 dragCloneForAnimation.style.transform = `translate(0, 0)`;
+                 setTimeout(() => dragCloneForAnimation.remove(), 300);
+            }
+            if(draggedCardEl) draggedCardEl.classList.remove('placeholder');
+            return;
         }
-    }
+        
+        if(board[toIndex].type !== 'normal') {
+            const fromEl = gameBoardEl.children[fromIndex];
+            const fromRect = fromEl.getBoundingClientRect();
+            dragCloneForAnimation.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+            dragCloneForAnimation.style.left = `${fromRect.left}px`;
+            dragCloneForAnimation.style.top = `${fromRect.top}px`;
+            dragCloneForAnimation.style.transform = `translate(0, 0) scale(1)`;
+            setTimeout(() => {
+                dragCloneForAnimation?.remove();
+                fromEl.classList.remove('placeholder');
+            }, 300);
+            return;
+        }
 
-    async function processTurn(fromIndex, toIndex) {
         isProcessing = true;
-        const oldScore = score;
-        const fromData = board[fromIndex];
-        const toData = board[toIndex];
+        
+        const fromData = board[fromIndex], toData = board[toIndex];
         
         if (fromData.animal === toData.animal) {
+            if(dragCloneForAnimation) dragCloneForAnimation.remove();
+            if (relics.oxFortitude && !tempBuffs.firstMoveUsed) { tempBuffs.firstMoveUsed = true; } else { movesLeft--; triggerUiUpdateEffect(movesDisplayEl); }
             toData.number += fromData.number;
-            board[fromIndex] = generateRandomCardData(stage);
-        } else {
-            [board[fromIndex], board[toIndex]] = [toData, fromData];
+            if (relics.whetstone && Math.random() < 0.1) toData.number += 10;
+            if (relics.alchemistSecret && fromData.number >= 100 && toData.number >= 100) toData.isGold = true;
+            if (relics.burrow && fromData.animal === '🐰' && Math.random() < 0.2) toData.number *= 2;
+            board[fromIndex] = generateRandomCardData(stage, true);
+            updateView();
+        } 
+        else {
+            let moveCosted = true;
+            let cloverChance = relics.fourLeafClover ? 0.02 : 0;
+            if (relics.oxFortitude && !tempBuffs.firstMoveUsed) { tempBuffs.firstMoveUsed = true; moveCosted = false; }
+            else if (relics.rabbitHop && Math.random() < (0.1 + cloverChance)) { showFloatingText("Free Move!", fromIndex, 'gimmick'); moveCosted = false; }
+            else if (relics.stickyGlove && Math.random() < (0.1 + cloverChance)) { showFloatingText("Free Swap!", fromIndex, 'gimmick'); moveCosted = false; }
+            
+            if(moveCosted) { movesLeft--; triggerUiUpdateEffect(movesDisplayEl); }
+            
+            if (relics.mischief && Math.random() < (0.15 + cloverChance)) {
+                fromData.number += 5;
+                toData.number += 5;
+            }
+            if (relics.brokenCompass && Math.random() < (0.05 + cloverChance)) {
+                fromData.animal = ALL_ANIMALS[Math.floor(Math.random() * ALL_ANIMALS.length)];
+            }
+
+            await animateDirectSwap(fromIndex, toIndex, dragCloneForAnimation);
+            [board[fromIndex], board[toIndex]] = [board[toIndex], board[fromIndex]];
+            updateView();
         }
         
-        movesLeft--;
-        updateView();
-        await new Promise(res => setTimeout(res, 300));
-
-        const combos = findCombos();
-        if (combos.length > 0) {
-            await handleCombos(combos);
+        await new Promise(res => setTimeout(res, 50));
+        let isChaining = true;
+        while(isChaining) {
+            const combos = findAllCombos();
+            if (combos.length > 0) {
+                await handleCombos(combos);
+                await fillEmptyCells();
+                updateView();
+                await new Promise(res => setTimeout(res, 400));
+            } else { isChaining = false; }
         }
-
-        const scoreDelta = calculateScoreDelta(oldScore);
-        if (scoreDelta > 0) {
-            showFloatingText(`+${scoreDelta}`, toIndex, 'score');
-            score += scoreDelta;
+        await applyRankEffects();
+        
+        if(relics.roosterPerch) {
+            let maxIdx = -1, maxNum = -1;
+            board.forEach((c, i) => { if(c?.type === 'normal' && c.number > maxNum) { maxNum = c.number; maxIdx = i; } });
+            if(maxIdx !== -1) { 
+                const bonus = 5 + Math.floor(stage / 5);
+                board[maxIdx].number += bonus; 
+                showFloatingText(`+${bonus}`, maxIdx, 'effect'); 
+            }
+        }
+        if(relics.tinyAnvil) {
+            let minIdx = -1, minNum = Infinity;
+            board.forEach((c, i) => { if(c?.type === 'normal' && c.number < minNum) { minNum = c.number; minIdx = i; } });
+            if(minIdx !== -1) { board[minIdx].number += 1; }
         }
 
         updateView();
         setTimeout(() => {
-            if (movesLeft <= 0) checkStageEnd();
-            else isProcessing = false;
-        }, 600);
+            const snakeShedSkinMax = relics.shedSkinOnceMore ? 2 : 1;
+            if (movesLeft <= 0 || (currentBoss && currentBoss.remainingGoal <= 0)) {
+                checkStageEnd();
+            } else if (relics.snakeShedSkin && movesLeft <= 0 && (tempBuffs.snakeSkinUsed < snakeShedSkinMax || tempBuffs.snakeSkinUsed === false)) {
+                movesLeft += 2; initialMoves += 2; triggerUiUpdateEffect(movesDisplayEl); showFloatingText("뱀의 허물!", 12, 'gimmick'); 
+                tempBuffs.snakeSkinUsed = (tempBuffs.snakeSkinUsed || 0) + 1;
+                isProcessing = false; updateView();
+            } else {
+                isProcessing = false;
+            }
+        }, 400);
     }
-    
+
+    function findAllCombos() {
+        const visited = new Array(ROWS * COLS).fill(false), allCombos = [];
+        for (let i = 0; i < board.length; i++) {
+            if (visited[i] || !board[i] || board[i].type !== 'normal') continue;
+            const cluster = [], q = [i], currentAnimal = board[i].animal;
+            visited[i] = true;
+            while (q.length > 0) {
+                const curr = q.shift();
+                cluster.push(curr);
+                getNeighborIndices([curr], true).forEach(nIdx => {
+                    if (!visited[nIdx] && board[nIdx]?.type === 'normal' && board[nIdx].animal === currentAnimal) {
+                        visited[nIdx] = true; q.push(nIdx);
+                    }
+                });
+            }
+            if (cluster.length >= 3) allCombos.push({ animal: currentAnimal, indices: cluster.sort((a,b) => a-b) });
+        }
+        return allCombos;
+    }
+
     async function handleCombos(combos) {
-        combos.sort((a, b) => b.indices.length - a.indices.length);
+        let totalScoreFromCombos = 0;
         for (const combo of combos) {
-            await showComboEffects(combo);
-            const topLeftIndex = Math.min(...combo.indices);
-            let sum = 0;
-            combo.indices.forEach(i => { sum += board[i].number; });
-            const gimmickResult = applyAnimalGimmicks(combo, sum);
-            board[topLeftIndex].number = gimmickResult.finalSum;
-            board[topLeftIndex].animal = combo.animal;
+            drawComboLines(combo);
+            await new Promise(res => setTimeout(res, 500)); 
+            const targetIndex = combo.indices[0];
             
-            combo.indices.forEach(i => {
-                if (i !== topLeftIndex) board[i] = generateRandomCardData(stage);
+            const targetEl = gameBoardEl.children[targetIndex];
+            if (targetEl) {
+                targetEl.classList.add('shake-effect');
+                setTimeout(() => targetEl.classList.remove('shake-effect'), 500);
+            }
+
+            await animateMerge(combo, targetIndex);
+            let sum = 0;
+            combo.indices.forEach(i => { 
+                if (board[i]?.isGold) { gold += 100; triggerUiUpdateEffect(goldDisplayEl); showFloatingText("+100G", i, 'score'); } 
+                sum += board[i]?.number || 0; 
             });
-
-            if (gimmickResult.aoePositions) {
-                gimmickResult.aoePositions.forEach(pos => {
-                    if (pos >= 0 && pos < board.length) board[pos].number += gimmickResult.aoePower;
-                });
-            }
-            updateView();
-            await new Promise(res => setTimeout(res, 300));
+            
+            applyGimmicksAndMutateBoard(combo, sum);
+            
+            let comboScore = calculateScoreForCombo(combo, sum);
+            if(tempBuffs.doubleNextScore) { comboScore *= 2; tempBuffs.doubleNextScore = false; }
+            totalScoreFromCombos += comboScore;
+            if(currentBoss?.onCombo) currentBoss.onCombo(combo, board);
+            
+            combo.indices.forEach(i => { if (i !== targetIndex) board[i] = null; });
         }
-    }
-
-    function findCombos() {
-        let foundCombos = [];
-        const checkedIndices = new Set();
-        const addCombo = (combo) => {
-            if (combo.indices.some(i => checkedIndices.has(i))) return;
-            foundCombos.push(combo);
-            combo.indices.forEach(i => checkedIndices.add(i));
-        };
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                [[0, 1], [1, 0], [1, 1], [1, -1]].forEach(([dr, dc]) => {
-                    for (let len = 5; len >= 3; len--) {
-                        let line = [], animal = null;
-                        let possible = true;
-                        for (let i = 0; i < len; i++) {
-                            let nr = r + i * dr, nc = c + i * dc;
-                            if (nr >= ROWS || nc < 0 || nc >= COLS) { possible = false; break; }
-                            let index = nr * COLS + nc;
-                            if (i === 0) animal = board[index].animal;
-                            else if (board[index].animal !== animal) { possible = false; break; }
-                            line.push(index);
-                        }
-                        if (possible) addCombo({ type: 'line', animal, indices: line });
-                    }
-                });
-            }
-        }
-        for (let size = 3; size <= 5; size++) {
-            for (let r = 0; r <= ROWS - size; r++) {
-                for (let c = 0; c <= COLS - size; c++) {
-                    let square = [], animal = board[r * COLS + c].animal;
-                    let isSquare = true;
-                    for(let i=0; i<size; i++) for(let j=0; j<size; j++) {
-                        let index = (r+i)*COLS + (c+j);
-                        if(board[index].animal !== animal) { isSquare = false; break; }
-                        square.push(index);
-                    }
-                    if(isSquare) addCombo({ type: 'square', animal, indices: square });
+        if (totalScoreFromCombos > 0) {
+            const oldScore = score;
+            score += totalScoreFromCombos;
+            
+            if (targetScore > 0 && oldScore < targetScore && score >= targetScore) {
+                if (!targetReached) {
+                    targetReached = true;
+                    triggerTargetReachedEffect();
                 }
             }
-        }
-        return foundCombos;
-    }
-
-    function applyAnimalGimmicks(combo, sum) {
-        let finalSum = sum, aoePositions = null, aoePower = 0;
-        switch(combo.animal) {
-            case '🐯': finalSum *= (playerBuffs.tigerPower ? 3 : 2); break;
-            case '🐲':
-                const center = Math.min(...combo.indices);
-                const r = Math.floor(center / COLS), c = center % COLS;
-                aoePositions = [[r-1,c-1],[r-1,c],[r-1,c+1],[r,c-1],[r,c+1],[r+1,c-1],[r+1,c],[r+1,c+1]].map(([nr,nc]) => nr*COLS+nc);
-                aoePower = playerBuffs.dragonBreath ? 10 : 5;
-                break;
-            case '🐭': finalSum += combo.indices.length * 5; break;
-            case '🐴': movesLeft++; break;
-        }
-        return { finalSum, aoePositions, aoePower };
-    }
-
-    function getGimmickText(combo) {
-        if(combo.type === 'square') return `${combo.indices.length}칸 정복!`;
-        switch(combo.animal) {
-            case '🐯': return `호랑이 강화 (${playerBuffs.tigerPower ? 'x3' : 'x2'})!`;
-            case '🐲': return `용의 포효 (주변 강화)!`;
-            case '🐭': return `쥐의 축복 (추가 점수)!`;
-            case '🐴': return `말 질주 (+1 Move)!`;
-            default: return `${combo.indices.length}개 조합!`;
+            if (targetScore > 0 && score > targetScore) {
+                const overtimeScore = score - Math.max(targetScore, oldScore);
+                if (overtimeScore > 0) {
+                    let goldGained = Math.floor(overtimeScore * (0.1 + stage * 0.005));
+                    if(tempBuffs.stageGoldBoost) goldGained = Math.floor(goldGained * tempBuffs.stageGoldBoost);
+                    if (goldGained > 0) {
+                        gold += goldGained;
+                        animateGoldGain(goldGained);
+                        triggerUiUpdateEffect(goldDisplayEl);
+                    }
+                }
+            }
+            showFloatingText(`+${totalScoreFromCombos.toLocaleString()}`, combos[0].indices[0], 'score');
         }
     }
-
-    async function showComboEffects(combo) {
-        combo.indices.forEach(i => gameBoardEl.children[i].classList.add('in-combo'));
-        drawComboLines(combo);
-        const gimmickText = getGimmickText(combo);
-        showFloatingText(gimmickText, combo.indices[Math.floor(combo.indices.length / 2)], 'gimmick');
-        await new Promise(res => setTimeout(res, 1200));
-        comboSvgGroup.innerHTML = '';
-        document.querySelectorAll('.card.in-combo').forEach(c => c.classList.remove('in-combo'));
+    
+    async function fillEmptyCells() {
+        let needsRefill = false;
+        for (let i = 0; i < board.length; i++) {
+            if (board[i] === null) { board[i] = generateRandomCardData(stage, true); needsRefill = true; }
+        }
+        if(needsRefill) { updateView(); await new Promise(r => setTimeout(r, 200)); }
     }
 
-    function drawComboLines(combo) {
-        const comboTypeClass = combo.type === 'square' ? 'square-combo' : 'line-combo';
-        const points = combo.indices.map(i => {
-            const rect = gameBoardEl.children[i].getBoundingClientRect();
-            const boardRect = gameBoardEl.getBoundingClientRect();
-            return { x: rect.left - boardRect.left + rect.width / 2, y: rect.top - boardRect.top + rect.height / 2 };
-        });
-        if (combo.type === 'line') {
-            for (let i = 0; i < points.length - 1; i++) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', points[i].x); line.setAttribute('y1', points[i].y);
-                line.setAttribute('x2', points[i+1].x); line.setAttribute('y2', points[i+1].y);
-                line.classList.add(comboTypeClass);
-                comboSvgGroup.appendChild(line);
+    async function applyRankEffects() {
+        const effects = [];
+        for(let i=0; i<board.length; i++) {
+            const card = board[i];
+            if(!card || card.type !== 'normal') continue;
+            let bonus = 0, neighbors = [], effectColor = '';
+            if (card.number >= 75) { neighbors = getNeighborIndices([i], true); bonus = Math.floor(card.number / 20); effectColor = 'var(--blue-glow)'; } 
+            else if (card.number >= 25) { neighbors = getNeighborIndices([i], false); bonus = Math.floor(card.number / 10); effectColor = 'var(--green-glow)'; }
+            if(bonus > 0) {
+                drawRankBonusEffect(i, effectColor);
+                neighbors.forEach(nIdx => {
+                    if(board[nIdx]?.type === 'normal' && (!relics.unshakable || board[nIdx].animal !== '🐮')) {
+                        effects.push({ index: nIdx, bonus: bonus });
+                        showFloatingText(`+${bonus}`, nIdx, 'effect');
+                    }
+                });
             }
         }
-    }
-
-    function showFloatingText(text, index, type) {
-        const textEl = document.createElement('div');
-        textEl.className = `floating-text ${type}`;
-        textEl.textContent = text;
-        const cardEl = gameBoardEl.children[index];
-        if(!cardEl) return;
-        const cardRect = cardEl.getBoundingClientRect();
-        const boardRect = effectsLayer.getBoundingClientRect();
-        textEl.style.left = `${cardRect.left - boardRect.left + cardRect.width / 2 - textEl.offsetWidth / 2}px`;
-        textEl.style.top = `${cardRect.top - boardRect.top + cardRect.height / 2 - textEl.offsetHeight / 2}px`;
-        effectsLayer.appendChild(textEl);
-        setTimeout(() => textEl.remove(), 1500);
-    }
-
-    function calculateScoreDelta(oldScore) {
-        let cardSum = board.reduce((sum, card) => sum + card.number, 0);
-        let newScore = Math.floor(cardSum * (stage * 0.5));
-        let delta = newScore - oldScore;
-        if (stage <= 10 && delta > 9999) delta = 9999;
-        return delta > 0 ? delta : 0;
-    }
-
-    function generateRandomCardData(currentStage) {
-        const stageBonus = Math.min(4, Math.floor(currentStage / 2));
-        const baseNum = Math.floor(Math.random() * 6) + 1 + stageBonus;
-        return { animal: ANIMALS[Math.floor(Math.random() * ANIMALS.length)], number: Math.min(9, baseNum) };
-    }
-
-    function checkStageEnd() {
-        let finalScore = playerBuffs.scoreMultiplier ? Math.floor(score * playerBuffs.scoreMultiplier) : score;
-        score = finalScore;
-        updateView();
-        
-        if (score >= targetScore) {
-            openShop();
-        } else {
-            resultModal.querySelector('#result-title').textContent = 'Game Over';
-            resultModal.querySelector('#result-message').textContent = `목표 ${targetScore}점 달성에 실패했습니다. 최종 점수: ${score}`;
-            resultModal.classList.add('show');
+        if(effects.length > 0) {
+            await new Promise(r => setTimeout(r, 300));
+            effects.forEach(eff => { if(board[eff.index]) { board[eff.index].number += eff.bonus; gameBoardEl.children[eff.index]?.classList.add('shake-effect'); } });
+            setTimeout(() => document.querySelectorAll('.shake-effect').forEach(el => el.classList.remove('shake-effect')), 500);
         }
     }
 
-    function openShop() {
-        const shopScoreEl = document.getElementById('shop-score');
-        const shopItemsEl = document.getElementById('shop-items');
-        shopScoreEl.textContent = score;
-        shopItemsEl.innerHTML = '';
-        const presentedItems = Object.keys(allItems).sort(() => 0.5 - Math.random()).slice(0, 4);
+    function selectActiveAnimals() { activeAnimals = [...ALL_ANIMALS].sort(() => 0.5 - Math.random()).slice(0, 9); }
+
+    function checkStageEnd(forceWin = false) {
+        isProcessing = true;
+        let isWin = forceWin || (currentBoss ? currentBoss.remainingGoal <= 0 : (targetScore > 0 && score >= targetScore));
+        if (isWin) {
+            totalAccumulatedScore += score;
+            let goldEarned = Math.floor(score / 10) + (movesLeft * (20 + stage));
+            if (tempBuffs.goldMultiplier) goldEarned = Math.floor(goldEarned * tempBuffs.goldMultiplier);
+            if (relics.yearOfFortune) goldEarned = Math.floor(goldEarned * 1.25);
+            if(tempBuffs.stageGoldBoost) goldEarned = Math.floor(goldEarned * tempBuffs.stageGoldBoost);
+            if(tempBuffs.interest) goldEarned += Math.floor(gold * 0.05);
+            gold += goldEarned;
+            
+            if (relics.recyclingBin) {
+                tempBuffs.recycledScore = Math.min(1000, Math.floor(board.reduce((acc, c) => acc + (c?.number || 0), 0) * 0.01));
+            }
+
+            showStageEndScreen();
+        } else {
+            showGameOverScreen();
+        }
+    }
+
+    function showGameOverScreen() {
+        const contentEl = document.getElementById('stage-end-content');
+        contentEl.innerHTML = `
+            <h2 class="stage-clear-text" style="color: var(--red-glow); text-shadow: 0 0 15px var(--red-glow);">GAME OVER</h2>
+            <p style="font-size: 1.2em;">스테이지 ${stage} 클리어에 실패했습니다.</p>
+            <button id="restart-button" class="action-button">다시 시작</button>
+        `;
+        stageEndScreen.style.display = 'flex';
+        document.getElementById('restart-button').addEventListener('click', initializeGame);
+    }
+    
+    function showStageEndScreen() {
+        const contentEl = document.getElementById('stage-end-content');
+        if (stage === 20 || stage === 50) {
+            const gradeInfo = calculateGrade(totalAccumulatedScore, stage);
+            const isFinal = stage === 50;
+            contentEl.innerHTML = `
+                <h2 class="stage-clear-text">${isFinal ? '최종 클리어!' : '20 스테이지 클리어!'}</h2>
+                <p>총 누적 점수: ${totalAccumulatedScore.toLocaleString()}</p>
+                <div class="final-grade grade-${gradeInfo.grade}">${gradeInfo.grade}</div>
+                <p>${gradeInfo.comment}</p>
+                <div style="display: flex; gap: 10px; width: 100%; margin-top: 20px;">
+                    ${!isFinal ? '<button id="infinite-mode-button" class="action-button">무한 모드 계속</button>' : ''}
+                    <button id="restart-button" class="action-button">새 게임 시작</button>
+                </div>
+            `;
+            if (!isFinal) {
+                document.getElementById('infinite-mode-button').addEventListener('click', () => advanceToNextStage());
+            }
+            document.getElementById('restart-button').addEventListener('click', initializeGame);
+        } else {
+             contentEl.innerHTML = `
+                <h2 class="stage-clear-text">STAGE CLEAR!</h2>
+                <p style="font-size: 1.1em; color: var(--secondary-text);">보유 골드: <span id="shop-gold" style="color: var(--gold-color); font-weight: bold;">${gold}</span></p>
+                <div class="shop-container"><div id="shop-items" class="shop-items"></div></div>
+                <button id="next-stage-button" class="action-button">다음 스테이지로</button>
+            `;
+            populateShop();
+            document.getElementById('next-stage-button').addEventListener('click', () => advanceToNextStage());
+        }
+        stageEndScreen.style.display = 'flex';
+    }
+
+    function calculateGrade(totalScore, finalStage) {
+        let expectedTotal = 0;
+        for(let i = 1; i <= finalStage; i++) {
+            expectedTotal += Math.floor((1000 + (i - 1) * 600) * Math.pow(1.04, i - 1));
+        }
+        const ratio = totalScore / expectedTotal;
+        if (ratio > 2.0) return { grade: 'S', comment: '당신은 이 게임의 신입니다!' };
+        if (ratio > 1.5) return { grade: 'A', comment: '훌륭한 전략가시군요!' };
+        if (ratio > 1.0) return { grade: 'B', comment: '준수한 플레이어입니다!' };
+        if (ratio > 0.7) return { grade: 'C', comment: '조금만 더 노력해봐요!' };
+        return { grade: 'D', comment: '성장의 여지가 많습니다!' };
+    }
+
+    function populateShop() {
+        const shopItemsContainer = document.getElementById('shop-items');
+        shopItemsContainer.innerHTML = '';
+        let itemCount = 4;
+        if (relics.magnifyingGlass) itemCount++;
+        
+        const costMultiplier = relics.piggyBank ? 0.9 : 1;
+        const presentedItems = Object.keys(allItems).sort(() => 0.5 - Math.random()).slice(0, itemCount);
         
         presentedItems.forEach(key => {
             const item = allItems[key];
+            const finalCost = Math.round(item.cost * costMultiplier);
             const itemEl = document.createElement('div');
-            itemEl.classList.add('item');
+            itemEl.className = 'item';
             itemEl.innerHTML = `
-                <div class="item-info"><h4>${item.name}</h4><p>${item.desc} (비용: ${item.cost})</p></div>
-                <button data-key="${key}" ${score < item.cost ? 'disabled' : ''}>구매</button>`;
-            shopItemsEl.appendChild(itemEl);
+                <div class="item-info">
+                    <h4>${item.name}</h4>
+                    <p>${item.desc}</p>
+                </div>
+                <div style="display: flex; align-items: center;">
+                    <span class="item-cost">${finalCost}G</span>
+                    <button data-key="${key}" class="action-button" style="width: auto; font-size: 0.9em; padding: 8px 12px;" ${gold < finalCost ? 'disabled' : ''}>구매</button>
+                </div>`;
+            shopItemsContainer.appendChild(itemEl);
         });
-        shopModal.classList.add('show');
+        shopItemsContainer.addEventListener('click', handleShopPurchase);
     }
+
+    function handleShopPurchase(e) {
+        if(e.target.tagName !== 'BUTTON' || e.target.disabled) return;
+        const key = e.target.dataset.key;
+        const item = allItems[key];
+        const costMultiplier = relics.piggyBank ? 0.9 : 1;
+        let finalCost = Math.round(item.cost * costMultiplier);
+
+        if (relics.couponBook && tempBuffs.purchaseCount && tempBuffs.purchaseCount % 3 === 2) {
+            finalCost = Math.floor(finalCost / 2);
+        }
+
+        if (gold >= finalCost) {
+            let cloverChance = relics.fourLeafClover ? 0.02 : 0;
+            if (!relics.trickstersLuck || Math.random() > (0.1 + cloverChance)) {
+                gold -= finalCost;
+            } else {
+                showFloatingText("무료 구매!", 12, 'gimmick');
+            }
+
+            tempBuffs.purchaseCount = (tempBuffs.purchaseCount || 0) + 1;
+
+            item.effect();
+            e.target.disabled = true;
+            e.target.textContent = '완료';
+            if (item.instant) {
+                if (key !== 'rerollShop') updateView();
+            }
+            document.getElementById('shop-gold').textContent = gold;
+            const allButtons = document.querySelectorAll('#shop-items button');
+            allButtons.forEach(btn => {
+                if(btn.disabled) return;
+                const itemKey = btn.dataset.key;
+                const itemCost = Math.round(allItems[itemKey].cost * costMultiplier);
+                if (gold < itemCost) btn.disabled = true;
+            });
+        }
+    }
+
+    function showAnimalSelectionModal(callback) {
+        animalSelectionCallback = callback;
+        const grid = animalSelectionModal.querySelector('#animal-selection-grid');
+        grid.innerHTML = activeAnimals.map(animal => 
+            `<span class="animal-select-icon" data-animal="${animal}">
+                <img src="${getEmojiUrl(animal)}" alt="${animal}" style="pointer-events: none;">
+            </span>`
+        ).join('');
+        animalSelectionModal.classList.add('show');
+    }
+
+    function handleAnimalSelection(e) {
+        const target = e.target.closest('.animal-select-icon');
+        if (!target) return;
+        
+        const selectedAnimal = target.dataset.animal;
+        if (animalSelectionCallback) {
+            animalSelectionCallback(selectedAnimal);
+        }
+        animalSelectionModal.classList.remove('show');
+        animalSelectionCallback = null;
+    }
+
+    function handleRelicIconClick(e) {
+        const target = e.target.closest('span[data-relic-key]');
+        if (!target) return;
+        const relicKey = target.dataset.relicKey;
+        const relic = relics[relicKey];
+        if (!relic) return;
+        tooltipModal.querySelector('#tooltip-name').textContent = relic.name;
+        tooltipModal.querySelector('#tooltip-icon').textContent = relic.icon;
+        tooltipModal.querySelector('#tooltip-desc').textContent = `[${RARITY_KR[relic.rarity]}] ${relic.desc}`;
+        tooltipModal.classList.add('show');
+    }
+
+    function showRelicSelectionScreen() {
+        const contentEl = document.getElementById('relic-selection-content');
+        const available = Object.entries(allRelics).filter(([key]) => !relics[key]);
+        const selection = available.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+        if (selection.length === 0) {
+            continueToNextStage();
+            return;
+        }
+
+        contentEl.innerHTML = `
+            <h2 class="relic-title-text">유물 획득</h2>
+            <p>다음 스테이지를 위한 유물을 하나 선택하세요.</p>
+            <div class="relic-container"><div id="relic-items" class="relic-items"></div></div>
+        `;
+        
+        const relicItemsContainer = contentEl.querySelector('#relic-items');
+        selection.forEach(([key, relic]) => {
+            const relicEl = document.createElement('div');
+            relicEl.className = 'relic-item';
+            relicEl.dataset.key = key;
+            relicEl.innerHTML = `
+                <span class="relic-icon">${relic.icon}</span>
+                <div class="relic-info">
+                    <h4>${relic.name}</h4>
+                    <p>[${RARITY_KR[relic.rarity]}] ${relic.desc}</p>
+                </div>
+            `;
+            relicItemsContainer.appendChild(relicEl);
+        });
+
+        relicItemsContainer.addEventListener('click', handleRelicSelection);
+        relicSelectionScreen.style.display = 'flex';
+    }
+
+    function handleRelicSelection(e) {
+        const target = e.target.closest('.relic-item');
+        if (!target) return;
+        
+        const key = target.dataset.key;
+        relics[key] = allRelics[key];
+        
+        relicSelectionScreen.style.display = 'none';
+        target.parentElement.removeEventListener('click', handleRelicSelection);
+        
+        showFloatingText(`유물 획득: ${allRelics[key].icon}`, 12, 'gimmick');
+        continueToNextStage();
+    }
+    
+    function generateRandomCardData(stage, isNew = false) {
+        let cloverChance = relics.fourLeafClover ? 0.02 : 0;
+        if (relics.sheepWool && Math.random() < (0.05 + cloverChance)) {
+            let maxCard = null, maxNum = -1;
+            board.forEach(c => { if(c?.type === 'normal' && c.number > maxNum) { maxNum = c.number; maxCard = c; }});
+            if (maxCard) return { ...maxCard, isNew: true };
+        }
+
+        if (tempBuffs.guaranteedAnimal && tempBuffs.guaranteedAnimalCount > 0) {
+            tempBuffs.guaranteedAnimalCount--;
+            return { type: 'normal', animal: tempBuffs.guaranteedAnimal, number: Math.floor(Math.random() * 6) + 1 + Math.min(4, Math.floor(stage / 3)), isNew };
+        }
+
+        const stageBonus = Math.min(4, Math.floor(stage / 3));
+        let baseNum = Math.floor(Math.random() * 6) + 1 + stageBonus;
+        return { type: 'normal', animal: activeAnimals[Math.floor(Math.random() * activeAnimals.length)], number: baseNum, isNew };
+    }
+    
+    function getGimmickText(animal) {
+        switch(animal) {
+            case '🐯': return `호랑이 강화!`;
+            case '🐲': return `용의 포효!`;
+            case '🐭': return `쥐의 축복!`;
+            case '🐴': return `말 질주!`;
+            case '🐮': return `소의 격려!`;
+            case '🐰': return `토끼의 도약!`;
+            case '🐍': return `뱀의 지혜!`;
+            case '🐏': return `양떼 효과!`;
+            case '🐵': return `원숭이의 장난!`;
+            case '🐔': return `닭의 울음!`;
+            case '🐶': return `개의 충성!`;
+            case '🐷': return `돼지의 행운!`;
+            default: return ``;
+        }
+    }
+
+    function applyGimmicksAndMutateBoard(combo, sum) {
+        const multiplier = relics.dragonsOrb ? 1.25 : 1;
+        const targetIndex = combo.indices[0];
+        let finalNumber = sum;
+        
+        const gimmickText = getGimmickText(combo.animal);
+        if (gimmickText) showFloatingText(gimmickText, targetIndex, 'gimmick');
+        
+        switch(combo.animal) {
+            case '🐭': finalNumber += Math.round(combo.indices.length * 15 * multiplier); break;
+            case '🐯': finalNumber = Math.round(sum * (relics.dragonsOrb ? 1.5 : 1.2)); break;
+        }
+
+        board[targetIndex] = { type: 'normal', animal: combo.animal, number: finalNumber, isNew: true };
+
+        switch(combo.animal) {
+            case '🐰': movesLeft++; initialMoves++; triggerUiUpdateEffect(movesDisplayEl); break;
+            case '🐶': score += Math.round(combo.indices.length * (50 + stage * 5) * multiplier); break;
+            case '🐷': gold += Math.round(combo.indices.length * (10 + stage) * multiplier); triggerUiUpdateEffect(goldDisplayEl); break;
+            case '🐮': getNeighborIndices([targetIndex], false).forEach(i => { if (board[i]?.type === 'normal') { const b = Math.ceil(board[i].number * 0.1 * multiplier); board[i].number += b; showFloatingText(`+${b}`, i, 'effect'); } }); break;
+            case '🐲': const p = Math.round(combo.indices.length * (5 + stage) * multiplier); getNeighborIndices([targetIndex], true).forEach(i => { if (board[i]?.type === 'normal') { board[i].number += p; showFloatingText(`+${p}`, i, 'effect'); } }); break;
+            case '🐍': const snakeBonus = Math.ceil(finalNumber * 0.1 * multiplier); board.map((c, i) => ({...c, index: i})).filter(c => c?.type === 'normal' && c.index !== targetIndex).sort((a, b) => a.number - b.number).slice(0, 2).forEach(c => { if(board[c.index]) { board[c.index].number += snakeBonus; showFloatingText(`+${snakeBonus}`, c.index, 'effect'); } }); break;
+            case '🐴': const col = targetIndex % COLS; for (let r = 0; r < ROWS; r++) { const i = r * COLS + col; if (board[i]?.type === 'normal' && i !== targetIndex) { board[i].number += Math.round(5 * multiplier); } } break;
+            case '🐏': board.forEach((c, i) => { if (c?.type === 'normal' && c.animal === '🐏' && i !== targetIndex) { c.number += Math.round(10 * multiplier); showFloatingText(`+10`, i, 'effect'); } }); break;
+            case '🐵': const swappable = board.map((c, i) => i).filter(i => board[i]?.type === 'normal' && i !== targetIndex); if (swappable.length >= 2) { const i1 = swappable.splice(Math.floor(Math.random() * swappable.length), 1)[0]; const i2 = swappable[Math.floor(Math.random() * swappable.length)]; animateDirectSwap(i1, i2).then(() => { [board[i1], board[i2]] = [board[i2], board[i1]]; updateView(); }); } break;
+            case '🐔': const row = Math.floor(targetIndex / COLS); for (let c = 0; c < COLS; c++) { const i = row * COLS + c; if (board[i]?.type === 'normal' && i !== targetIndex) { board[i].number += Math.round(5 * multiplier); } } break;
+        }
+    }
+
+    function updateView() {
+        board.forEach((cardData, i) => {
+            const cardEl = gameBoardEl.children[i];
+            if (!cardEl) return;
+            
+            const isDestroying = cardEl.classList.contains('cursed-destroy');
+            if (!isDestroying) {
+                cardEl.className = 'card';
+            }
+
+            if(!cardData) { cardEl.innerHTML = ''; return; }
+            if (cardData.type === 'cursed') { 
+                cardEl.classList.add('cursed'); 
+                cardEl.innerHTML = '🪨';
+            } 
+            else if (cardData.type === 'normal') {
+                const animalEmoji = cardData.animal || '';
+                cardEl.innerHTML = `
+                    <div class="card-animal"><img src="${getEmojiUrl(animalEmoji)}" alt="${animalEmoji}"></div>
+                    <div class="card-number"></div>`;
+                
+                const numberEl = cardEl.querySelector('.card-number');
+                const numStr = cardData.number > 100000 ? (cardData.number / 1000).toFixed(1) + 'K' : cardData.number;
+                const isSmall = numStr.length > 4;
+
+                numberEl.textContent = numStr;
+                numberEl.classList.toggle('small', isSmall);
+
+                if (cardData.isGold) cardEl.classList.add('border-gold');
+                else if (cardData.number >= 2500) cardEl.classList.add('border-gold');
+                else if (cardData.number >= 1000) cardEl.classList.add('border-red');
+                else if (cardData.number >= 500) cardEl.classList.add('border-purple');
+                else if (cardData.number >= 200) cardEl.classList.add('border-orange');
+                else if (cardData.number >= 75) cardEl.classList.add('border-blue');
+                else if (cardData.number >= 25) cardEl.classList.add('border-green');
+                if(cardData.isNew) { cardEl.classList.add('spawn-effect'); cardData.isNew = false; }
+            }
+        });
+        document.getElementById('stage').textContent = stage;
+        updateScoreboard();
+        
+        const animalStatusEl = document.getElementById('animal-status-bar').querySelector('.icon-container');
+        animalStatusEl.innerHTML = ALL_ANIMALS.map(a => `<span class="${!activeAnimals.includes(a) ? 'banned' : ''}" title="${a}"><img src="${getEmojiUrl(a)}" alt="${a}"></span>`).join('');
+        const relicIconsContainer = document.getElementById('relics-display').querySelector('.icon-container');
+        relicIconsContainer.innerHTML = Object.entries(relics).map(([k, r]) => `<span data-relic-key="${k}" title="${r.name}">${r.icon}</span>`).join('');
+    }
+
+    function updateScoreboard() {
+        currentScoreTextEl.classList.remove('score-updated');
+
+        if (currentBoss) {
+            targetMarkerEl.style.display = 'none';
+            targetTextContainerEl.style.display = 'none';
+            document.querySelector('.target-label').style.display = 'none';
+            const percentage = (currentBoss.goalValue - currentBoss.remainingGoal) / currentBoss.goalValue * 100;
+            scoreProgressFillEl.style.width = `${percentage}%`;
+            scoreProgressFillEl.className = 'progress-bar-fill color-red';
+            currentScoreTextEl.textContent = `Boss ${currentBoss.remainingGoal}/${currentBoss.goalValue}`;
+        } else {
+            const targetMarkerPosition = 80;
+            targetMarkerEl.style.display = 'block';
+            targetTextContainerEl.style.display = 'block';
+            document.querySelector('.target-label').style.display = 'block';
+            targetMarkerEl.style.left = `${targetMarkerPosition}%`;
+            targetTextContainerEl.style.left = `${targetMarkerPosition}%`;
+            document.querySelector('.target-label').style.left = `${targetMarkerPosition}%`;
+
+            const progressToTarget = targetScore > 0 ? (score / targetScore) * targetMarkerPosition : 0;
+            const displayPercentage = Math.min(progressToTarget, 100);
+            
+            scoreProgressFillEl.style.width = `${displayPercentage}%`;
+
+            let colorClass = 'color-red';
+            if (displayPercentage >= 100) colorClass = 'color-gold';
+            else if (displayPercentage >= targetMarkerPosition) colorClass = 'color-blue';
+            else if (displayPercentage >= targetMarkerPosition * 0.7) colorClass = 'color-green';
+            else if (displayPercentage >= targetMarkerPosition * 0.35) colorClass = 'color-yellow';
+            
+            scoreProgressFillEl.className = `progress-bar-fill ${colorClass}`;
+            currentScoreTextEl.textContent = score.toLocaleString();
+            targetScoreTextEl.textContent = targetScore.toLocaleString();
+            requestAnimationFrame(() => {
+                currentScoreTextEl.classList.add('score-updated');
+            });
+        }
+        movesDisplayEl.textContent = `Move ${movesLeft} / ${initialMoves}`;
+        goldDisplayEl.textContent = `💰 ${gold}`;
+    }
+
+    function triggerUiUpdateEffect(element) {
+        if (!element) return;
+        element.classList.add('ui-update-effect');
+        setTimeout(() => {
+            element.classList.remove('ui-update-effect');
+        }, 400);
+    }
+    
+    function triggerTargetReachedEffect() {
+        targetMarkerEl.classList.add('target-reached-effect');
+        targetTextContainerEl.classList.add('target-reached-effect');
+        setTimeout(() => {
+            targetMarkerEl.classList.remove('target-reached-effect');
+            targetTextContainerEl.classList.remove('target-reached-effect');
+        }, 600);
+    }
+
+    function animateGoldGain(amount) {
+        const scoreRect = scoreProgressFillEl.getBoundingClientRect();
+        const goldRect = goldDisplayEl.getBoundingClientRect();
+
+        const goldEl = document.createElement('div');
+        goldEl.textContent = `+${amount}💰`;
+        Object.assign(goldEl.style, {
+            position: 'fixed',
+            left: `${scoreRect.left + scoreRect.width / 2}px`,
+            top: `${scoreRect.top}px`,
+            color: 'var(--gold-color)',
+            fontWeight: 'bold',
+            fontSize: '1.2em',
+            textShadow: '0 0 5px black',
+            zIndex: '300',
+            transition: 'transform 0.8s ease-in, opacity 0.8s ease-in'
+        });
+        document.body.appendChild(goldEl);
+
+        requestAnimationFrame(() => {
+            const dx = goldRect.left - scoreRect.left - scoreRect.width / 2;
+            const dy = goldRect.top - scoreRect.top;
+            goldEl.style.transform = `translate(${dx}px, ${dy}px) scale(0.5)`;
+            goldEl.style.opacity = '0';
+        });
+
+        setTimeout(() => goldEl.remove(), 800);
+    }
+
+    function createShatterEffect(index) {
+        const effectsContainer = document.getElementById('html-effects-layer');
+        const cardEl = gameBoardEl.children[index];
+        if (!effectsContainer || !cardEl) return;
+
+        const rect = cardEl.getBoundingClientRect();
+        const containerRect = gameBoardEl.getBoundingClientRect();
+        const centerX = rect.left - containerRect.left + rect.width / 2;
+        const centerY = rect.top - containerRect.top + rect.height / 2;
+
+        for (let i = 0; i < 15; i++) {
+            const particle = document.createElement('div');
+            Object.assign(particle.style, {
+                position: 'absolute',
+                left: `${centerX}px`,
+                top: `${centerY}px`,
+                width: `${Math.random() * 6 + 3}px`,
+                height: particle.style.width,
+                background: `rgba(100, 100, 120, ${Math.random() * 0.5 + 0.5})`,
+                borderRadius: '2px',
+                pointerEvents: 'none',
+                transition: 'transform 0.5s ease-out, opacity 0.5s ease-out'
+            });
+            
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 40 + 20;
+            const translateX = Math.cos(angle) * distance;
+            const translateY = Math.sin(angle) * distance;
+
+            effectsContainer.appendChild(particle);
+
+            requestAnimationFrame(() => {
+                particle.style.transform = `translate(${translateX}px, ${translateY}px) rotate(${Math.random() * 360}deg)`;
+                particle.style.opacity = '0';
+            });
+
+            setTimeout(() => {
+                particle.remove();
+            }, 500);
+        }
+    }
+
+    function createCardElement(index) { const c = document.createElement('div'); c.className = 'card'; c.dataset.index = index; return c; }
+    
+    function handleDragStart(e) {
+        if (isProcessing || isDragging) return;
+        const card = e.target.closest('.card');
+        if (!card || !board[card.dataset.index] || board[card.dataset.index].type !== 'normal') return;
+        
+        isDragging = true; 
+        draggedCardEl = card;
+        
+        const rect = card.getBoundingClientRect();
+        dragClone = card.cloneNode(true);
+        Object.assign(dragClone.style, { 
+            position: 'fixed', 
+            width: `${rect.width}px`, 
+            height: `${rect.height}px`, 
+            zIndex: '1000', 
+            pointerEvents: 'none', 
+            transition: 'none', 
+            left: `${rect.left}px`, 
+            top: `${rect.top}px`,
+            transform: 'scale(1.1)',
+            boxShadow: '0 8px 25px rgba(0,0,0,0.4)'
+        });
+        document.body.appendChild(dragClone);
+        
+        card.classList.add('placeholder');
+        
+        const touch = e.touches ? e.touches[0] : e;
+        dragStartX = touch.clientX; 
+        dragStartY = touch.clientY;
+        currentX = touch.clientX; 
+        currentY = touch.clientY;
+        
+        animationFrameId = requestAnimationFrame(onDragAnimation);
+    }
+
+    function onDragAnimation() {
+        if (!isDragging || !dragClone) return;
+        const dx = currentX - dragStartX;
+        const dy = currentY - dragStartY;
+        dragClone.style.transform = `translate(${dx}px, ${dy}px) scale(1.1)`;
+        animationFrameId = requestAnimationFrame(onDragAnimation);
+    }
+
+    function handleDragMove(e) {
+        if (!isDragging || !dragClone) return;
+        if (e.cancelable) e.preventDefault();
+        
+        const touch = e.touches ? e.touches[0] : e;
+        currentX = touch.clientX; 
+        currentY = touch.clientY;
+        
+        if(lastHoveredIndex !== -1 && gameBoardEl.children[lastHoveredIndex]) {
+            gameBoardEl.children[lastHoveredIndex].classList.remove('merge-preview', 'swap-preview');
+        }
+
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetCard = targetEl ? targetEl.closest('.card') : null;
+        const newHoveredIndex = targetCard ? parseInt(targetCard.dataset.index) : -1;
+        
+        if (newHoveredIndex !== -1 && targetCard !== draggedCardEl) {
+            const fromData = board[draggedCardEl.dataset.index];
+            const toData = board[newHoveredIndex];
+            if (fromData && toData?.type === 'normal') {
+                targetCard.classList.add(fromData.animal === toData.animal ? 'merge-preview' : 'swap-preview');
+            }
+        }
+        lastHoveredIndex = newHoveredIndex;
+    }
+
+    function handleDragEnd(e) {
+        if (!isDragging) return;
+
+        const fromIndex = parseInt(draggedCardEl.dataset.index);
+        const localDragClone = dragClone;
+        const localDraggedEl = draggedCardEl;
+
+        isDragging = false;
+        draggedCardEl = null;
+        dragClone = null;
+        cancelAnimationFrame(animationFrameId);
+        
+        if(lastHoveredIndex !== -1 && gameBoardEl.children[lastHoveredIndex]) {
+            gameBoardEl.children[lastHoveredIndex].classList.remove('merge-preview', 'swap-preview');
+        }
+
+        const touch = e.changedTouches ? e.changedTouches[0] : e;
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const targetCard = targetEl ? targetEl.closest('.card') : null;
+        const toIndex = targetCard ? parseInt(targetCard.dataset.index) : -1;
+
+        if (targetCard && targetCard !== localDraggedEl && board[toIndex]) {
+            processTurn(fromIndex, toIndex, localDragClone);
+        } else {
+            localDraggedEl.classList.remove('placeholder');
+            const fromRect = localDraggedEl.getBoundingClientRect();
+            localDragClone.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+            localDragClone.style.left = `${fromRect.left}px`;
+            localDragClone.style.top = `${fromRect.top}px`;
+            localDragClone.style.transform = 'translate(0, 0) scale(1)';
+            setTimeout(() => localDragClone?.remove(), 300);
+        }
+        lastHoveredIndex = -1;
+    }
+    
+    async function animateMerge(combo, targetIndex) {
+        const targetEl = gameBoardEl.children[targetIndex], targetRect = targetEl.getBoundingClientRect();
+        const promises = combo.indices.map(i => {
+            if (i === targetIndex) return Promise.resolve();
+            return new Promise(resolve => {
+                const movingEl = gameBoardEl.children[i], clone = movingEl.cloneNode(true), movingRect = movingEl.getBoundingClientRect();
+                Object.assign(clone.style, { position: 'fixed', left: `${movingRect.left}px`, top: `${movingRect.top}px`, width: `${movingRect.width}px`, height: `${movingRect.height}px`, zIndex: '50', transition: 'transform 0.4s ease-in, opacity 0.4s ease-in', margin: '0' });
+                document.body.appendChild(clone);
+                movingEl.style.opacity = '0';
+                setTimeout(() => { clone.style.transform = `translate(${targetRect.left - movingRect.left}px, ${targetRect.top - movingRect.top}px) scale(0.3)`; clone.style.opacity = '0'; }, 20);
+                setTimeout(() => { clone.remove(); movingEl.style.opacity = '1'; resolve(); }, 420);
+            });
+        });
+        await Promise.all(promises);
+    }
+    
+    function animateDirectSwap(fromIndex, toIndex, dragClone) {
+        return new Promise(resolve => {
+            const fromEl = gameBoardEl.children[fromIndex];
+            const toEl = gameBoardEl.children[toIndex];
+
+            if (!fromEl || !toEl || !dragClone) {
+                dragClone?.remove();
+                resolve();
+                return;
+            }
+
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+            
+            const toClone = toEl.cloneNode(true);
+            Object.assign(toClone.style, {
+                position: 'fixed',
+                left: `${toRect.left}px`,
+                top: `${toRect.top}px`,
+                width: `${toRect.width}px`,
+                height: `${toRect.height}px`,
+                zIndex: '1001',
+                transition: 'transform 0.3s ease-out',
+                margin: '0'
+            });
+            document.body.appendChild(toClone);
+            toEl.style.opacity = '0';
+
+            dragClone.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+            dragClone.style.left = `${toRect.left}px`;
+            dragClone.style.top = `${toRect.top}px`;
+            dragClone.style.transform = 'translate(0, 0) scale(1)';
+
+            const deltaX = fromRect.left - toRect.left;
+            const deltaY = fromRect.top - toRect.top;
+            
+            requestAnimationFrame(() => {
+                toClone.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            });
+
+            setTimeout(() => {
+                dragClone.remove();
+                toClone.remove();
+                toEl.style.opacity = '1';
+                resolve();
+            }, 300);
+        });
+    }
+
+    function drawRankBonusEffect(index, color) {
+        const cardEl = gameBoardEl.children[index];
+        const effectsContainer = document.getElementById('html-effects-layer');
+        if (!effectsContainer || !cardEl) return;
+        
+        const rect = cardEl.getBoundingClientRect();
+        const containerRect = gameBoardEl.getBoundingClientRect();
+
+        const auraEl = document.createElement('div');
+        auraEl.className = 'rank-aura-effect';
+        auraEl.style.boxShadow = `0 0 15px 5px ${color}`;
+        Object.assign(auraEl.style, {
+            left: `${rect.left - containerRect.left + rect.width / 2}px`,
+            top: `${rect.top - containerRect.top + rect.height / 2}px`,
+            width: `${rect.width * 1.5}px`
+        });
+
+        effectsContainer.appendChild(auraEl);
+        setTimeout(() => auraEl.remove(), 800);
+    }
+
+    function showFloatingText(text, index, type) {
+        const effectsContainer = document.getElementById('html-effects-layer');
+        const cardEl = gameBoardEl.children[index];
+        if (!effectsContainer || !cardEl) return;
+
+        const rect = cardEl.getBoundingClientRect();
+        const containerRect = gameBoardEl.getBoundingClientRect();
+
+        const textEl = document.createElement('div');
+        textEl.className = `floating-text ${type}`;
+        textEl.textContent = text;
+        
+        Object.assign(textEl.style, {
+            left: `${rect.left - containerRect.left + rect.width / 2}px`,
+            top: `${rect.top - containerRect.top + rect.height / 2}px`,
+        });
+
+        const colorMap = { score: 'var(--gold-color)', gimmick: '#00e5ff', effect: 'var(--purple-glow)' };
+        textEl.style.setProperty('--effect-color', colorMap[type] || 'var(--primary-text)');
+        effectsContainer.appendChild(textEl);
+        setTimeout(() => textEl.remove(), 1500);
+    }
+
+    function drawComboLines(combo) {
+        const defs = effectsLayer.querySelector('defs');
+        effectsLayer.innerHTML = ''; 
+        if(defs) effectsLayer.appendChild(defs);
+
+        const boardAreaRect = effectsLayer.getBoundingClientRect();
+        if (boardAreaRect.width === 0) return;
+
+        const getCardCenter = (index) => {
+            const cardEl = gameBoardEl.children[index];
+            if (!cardEl) return null;
+            const cardRect = cardEl.getBoundingClientRect();
+            return {
+                x: cardRect.left - boardAreaRect.left + cardRect.width / 2,
+                y: cardRect.top - boardAreaRect.top + cardRect.height / 2,
+            };
+        };
+        
+        const sortedIndices = combo.indices.slice().sort((a, b) => a - b);
+        const isHorizontal = sortedIndices.every(i => Math.floor(i / COLS) === Math.floor(sortedIndices[0] / COLS));
+        const isVertical = sortedIndices.every(i => (i % COLS) === (sortedIndices[0] % COLS));
+
+        if (isHorizontal || isVertical) {
+            const startPos = getCardCenter(sortedIndices[0]);
+            const endPos = getCardCenter(sortedIndices[sortedIndices.length - 1]);
+            if (!startPos || !endPos) return;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M ${startPos.x} ${startPos.y} L ${endPos.x} ${endPos.y}`;
+            path.setAttribute('d', d);
+            path.setAttribute('class', 'combo-path');
+            effectsLayer.appendChild(path);
+            
+            const length = path.getTotalLength();
+            if (length > 0) {
+              path.style.strokeDasharray = length;
+              path.style.strokeDashoffset = length;
+              requestAnimationFrame(() => path.classList.add('animate'));
+            }
+        } else {
+            const centerPos = getCardCenter(combo.indices[0]);
+            if (!centerPos) return;
+            const { x: cx, y: cy } = centerPos;
+
+            for (let i = 1; i < combo.indices.length; i++) {
+                const startPos = getCardCenter(combo.indices[i]);
+                if (!startPos) continue;
+                const { x: x2, y: y2 } = startPos;
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const d = `M ${x2} ${y2} Q ${(cx + x2)/2} ${(cy + y2)/2}, ${cx} ${cy}`;
+                path.setAttribute('d', d);
+                path.setAttribute('class', 'combo-path');
+                effectsLayer.appendChild(path);
+
+                const length = path.getTotalLength();
+                if (length > 0) {
+                    path.style.strokeDasharray = length;
+                    path.style.strokeDashoffset = length;
+                    requestAnimationFrame(() => path.classList.add('animate'));
+                }
+            }
+        }
+
+        setTimeout(() => { 
+            const defs = effectsLayer.querySelector('defs');
+            effectsLayer.innerHTML = '';
+            if(defs) effectsLayer.appendChild(defs);
+        }, 800);
+    }
+
+    function calculateScoreForCombo(combo, numberSum) { 
+        let len = combo.indices.length; 
+        if (relics.zodiacBlessing) len++; 
+        
+        let lengthMultiplier = 1.0;
+        if(len===4) lengthMultiplier = 1.2; 
+        else if(len===5) lengthMultiplier = 1.5;
+        else if(len > 5) lengthMultiplier = 1.5 + (len - 5) * 0.2;
+
+        let baseScore = numberSum * lengthMultiplier;
+        
+        if(relics.kingOfTheMountain && board.filter(c => c?.animal === '🐯').length >= 5) baseScore *= 1.1;
+        if(relics.oxPerseverance && movesLeft <= 3) baseScore *= 1.15;
+        if(relics.flockTogether && combo.animal === '🐑') baseScore *= (1 + (combo.indices.length * 0.02));
+        if(relics.miceCrumbs && len === 3) baseScore *= 1.1;
+
+        return Math.floor(baseScore) * 3; // 최종 점수 3배
+    }
+
+    function getNeighborIndices(indices, eightWay = false) { const n=new Set(); const d=eightWay?[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]:[[-1,0],[1,0],[0,-1],[0,1]]; indices.forEach(i=>{const r=Math.floor(i/COLS),c=i%COLS; d.forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc; if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)n.add(nr*COLS+nc);});}); return Array.from(n).filter(idx => !indices.includes(idx)); }
+    
+    setupStartScreen();
 });
 </script>
 </body>
