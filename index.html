@@ -645,7 +645,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // [MODIFIED] 아이폰 확대 버그 수정
     let lastTouchEnd = 0;
     document.addEventListener('touchend', function (event) {
         const now = (new Date()).getTime();
@@ -1010,7 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         shopRerollCost = 100;
-        relicRerollCost = 500; // [MODIFIED] 유물 새로고침 비용 변경
+        relicRerollCost = 500;
 
         targetReached = false;
         currentBoss = null;
@@ -1028,7 +1027,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (relics.shedSkinOnceMore) tempBuffs.snakeSkinUsed = 0;
         else if (relics.snakeShedSkin) tempBuffs.snakeSkinUsed = false;
 
-        // [MODIFIED] 목표 점수 공식 수정 (절반으로 감소)
         if (currentBoss) {
             targetScore = 0;
         } else {
@@ -1041,7 +1039,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const stagesAfter20 = stage - 20;
                 calculatedScore = Math.floor(stage20Score * Math.pow(1.07, stagesAfter20));
             }
-            targetScore = Math.floor(calculatedScore / 2); // 최종 점수 절반으로
+            targetScore = Math.floor(calculatedScore / 2); 
         }
         
         if (relics.trainingWeight) targetScore = Math.floor(targetScore * 1.1);
@@ -1615,7 +1613,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switch(combo.animal) {
             case '🐭': finalNumber += Math.round(combo.indices.length * 15 * multiplier); break;
-            case '🐯': finalNumber = Math.round(sum * (relics.dragonsOrb ? 1.5 : 1.2)); break;
+            // [MODIFIED] 밸런스 조정: 호랑이 효과를 곱셈에서 덧셈으로 변경
+            case '🐯': finalNumber += Math.round((50 + stage * 10) * multiplier); break;
         }
 
         board[targetIndex] = { type: 'normal', animal: combo.animal, number: finalNumber, isNew: true };
@@ -2067,6 +2066,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => auraEl.remove(), 800);
     }
 
+    // [MODIFIED] 플로팅 텍스트 겹침 문제 해결
     function showFloatingText(text, index, type) {
         const effectsContainer = document.getElementById('html-effects-layer');
         const cardEl = gameBoardEl.children[index];
@@ -2075,13 +2075,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = cardEl.getBoundingClientRect();
         const containerRect = gameBoardEl.getBoundingClientRect();
 
+        let topOffset = 0;
+        if (type === 'gimmick' || type === 'effect') {
+            topOffset = -rect.height * 0.25; // 위로
+        } else if (type === 'score') {
+            topOffset = rect.height * 0.25; // 아래로
+        }
+
         const textEl = document.createElement('div');
         textEl.className = `floating-text ${type}`;
         textEl.textContent = text;
         
         Object.assign(textEl.style, {
             left: `${rect.left - containerRect.left + rect.width / 2}px`,
-            top: `${rect.top - containerRect.top + rect.height / 2}px`,
+            top: `${rect.top - containerRect.top + rect.height / 2 + topOffset}px`,
         });
 
         const colorMap = { score: 'var(--gold-color)', gimmick: '#00e5ff', effect: 'var(--purple-glow)' };
@@ -2160,6 +2167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     }
 
+    // [MODIFIED] 밸런스 조정: 점수 계산 공식 수정
     function calculateScoreForCombo(combo, numberSum) { 
         let len = combo.indices.length; 
         if (relics.zodiacBlessing) len++; 
@@ -2176,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(relics.flockTogether && combo.animal === '🐑') baseScore *= (1 + (combo.indices.length * 0.02));
         if(relics.miceCrumbs && len === 3) baseScore *= 1.1;
 
-        return Math.floor(baseScore) * 3; // 최종 점수 3배
+        return Math.floor(baseScore); // 최종 3배 보너스 삭제
     }
 
     function getNeighborIndices(indices, eightWay = false) { const n=new Set(); const d=eightWay?[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]:[[-1,0],[1,0],[0,-1],[0,1]]; indices.forEach(i=>{const r=Math.floor(i/COLS),c=i%COLS; d.forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc; if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)n.add(nr*COLS+nc);});}); return Array.from(n).filter(idx => !indices.includes(idx)); }
