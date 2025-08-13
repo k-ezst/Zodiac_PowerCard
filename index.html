@@ -312,23 +312,31 @@
             text-shadow: 1px 1px 2px black;
         }
 
-        /* [MODIFIED] 보스 카드 파괴 애니메이션 */
+        /* [MODIFIED] 보스 카드 파괴(폭발) 애니메이션 */
         @keyframes shatter-animation {
-            0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
-            10% { transform: translate(-3px, -3px) rotate(-3deg); }
-            20% { transform: translate(3px, 3px) rotate(3deg); }
-            30% { transform: translate(-3px, 2px) rotate(0deg); }
-            40% { transform: translate(3px, -2px) rotate(4deg); }
-            50% { transform: translate(-3px, 3px) rotate(-2deg); }
-            60% { transform: translate(3px, 2px) rotate(0deg); }
-            70% { transform: translate(-4px, 3px) rotate(-4deg); }
-            80% { transform: translate(3px, -3px) rotate(3deg); }
-            90% { transform: translate(-2px, 3px) rotate(0deg); }
-            100% { transform: translate(0, 0) rotate(0deg) scale(0.4); opacity: 0; }
+            0% { 
+                transform: scale(1) rotate(0deg); 
+                opacity: 1; 
+                box-shadow: 0 0 15px var(--red-glow); 
+            }
+            20% { 
+                transform: scale(1.15) rotate(-5deg); 
+                box-shadow: 0 0 30px 10px rgba(255, 255, 255, 0.8);
+            }
+            40% { 
+                transform: scale(1.2) rotate(5deg); 
+            }
+            100% { 
+                transform: scale(0.1) rotate(15deg); 
+                opacity: 0; 
+                box-shadow: 0 0 0px 0px rgba(255, 255, 255, 0); 
+            }
         }
+
         .card.cursed-destroy {
             animation: shatter-animation 0.5s ease-in-out forwards;
             transform-origin: center;
+            z-index: 5; /* 다른 카드 위로 보이게 */
         }
 
         .card-animal { 
@@ -504,7 +512,6 @@
         .icon-container span img { width: 100%; height: 100%; }
         .icon-container span.banned { opacity: 0.5; filter: grayscale(1); }
         
-        /* [MODIFIED] 스테이지 동물 아이콘 UI 개선 */
         #animal-status-bar .icon-container {
             flex-wrap: nowrap;
             gap: clamp(4px, 1vw, 6px);
@@ -512,6 +519,19 @@
         }
         #animal-status-bar .icon-container span {
             font-size: clamp(1em, 3.5vw, 1.2em);
+            flex-shrink: 0;
+        }
+
+        /* [NEW] 유물 아이콘 표시 UI 개선 */
+        #relics-display .icon-container {
+            flex-wrap: nowrap;
+            gap: clamp(6px, 1.5vw, 8px);
+            overflow-x: auto;
+            justify-content: flex-start;
+            padding: 2px 4px 4px 4px;
+        }
+        #relics-display .icon-container span {
+            font-size: clamp(1.1em, 4vw, 1.3em);
             flex-shrink: 0;
         }
 
@@ -649,7 +669,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let targetReached = false;
     let animalSelectionCallback = null;
 
-    // [MODIFIED] 드래그 성능 최적화 및 기준점 변경을 위한 변수 추가
     let currentX, currentY;
     let dragStartRect = null;
     let boardRect = null;
@@ -694,7 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (cursedIdx !== -1) {
                 const cardEl = gameBoardEl.children[cursedIdx];
                 if (cardEl) {
-                    // [MODIFIED] 보스 카드 파괴 애니메이션 적용
                     cardEl.classList.add('cursed-destroy');
                     createShatterEffect(cursedIdx);
                     board[cursedIdx] = null;
@@ -833,7 +851,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 destroyedIndices.forEach(i => {
                     const cardEl = gameBoardEl.children[i];
                     if (cardEl) {
-                        // [MODIFIED] 보스 카드 파괴 애니메이션 적용
                         cardEl.classList.add('cursed-destroy');
                         createShatterEffect(i);
                         b[i] = null; 
@@ -1537,16 +1554,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // [MODIFIED] 보스 카드 교체 시 이펙트 오류 수정
     function updateView() {
         board.forEach((cardData, i) => {
             const cardEl = gameBoardEl.children[i];
             if (!cardEl) return;
             
-            // 애니메이션이 진행 중인 보스 카드의 클래스는 초기화하지 않음
-            const isDestroying = cardEl.classList.contains('cursed-destroy');
-            if (!isDestroying) {
-                cardEl.className = 'card';
-            }
+            // 모든 카드의 클래스를 항상 초기화하여 애니메이션 잔상 버그를 해결
+            cardEl.className = 'card';
 
             if(!cardData) { cardEl.innerHTML = ''; return; }
             if (cardData.type === 'cursed') { 
@@ -1673,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => goldEl.remove(), 800);
     }
 
+    // [MODIFIED] 파편 효과 강화
     function createShatterEffect(index) {
         const effectsContainer = document.getElementById('html-effects-layer');
         const cardEl = gameBoardEl.children[index];
@@ -1682,30 +1698,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const containerRect = gameBoardEl.getBoundingClientRect();
         const centerX = rect.left - containerRect.left + rect.width / 2;
         const centerY = rect.top - containerRect.top + rect.height / 2;
+        const particleColors = ['var(--red-glow)', 'var(--orange-glow)', 'var(--gold-color)'];
 
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 20; i++) { // 파편 개수 증가
             const particle = document.createElement('div');
+            const color = particleColors[Math.floor(Math.random() * particleColors.length)];
             Object.assign(particle.style, {
                 position: 'absolute',
                 left: `${centerX}px`,
                 top: `${centerY}px`,
-                width: `${Math.random() * 8 + 4}px`,
+                width: `${Math.random() * 10 + 5}px`, // 파편 크기 증가
                 height: particle.style.width,
-                background: `rgba(120, 120, 140, ${Math.random() * 0.5 + 0.5})`, // 석상 색과 비슷하게
-                borderRadius: '2px',
+                background: color,
+                boxShadow: `0 0 10px ${color}`, // 파편에 빛 효과 추가
+                borderRadius: '50%',
                 pointerEvents: 'none',
-                transition: 'transform 0.5s ease-out, opacity 0.5s ease-out'
+                transition: 'transform 0.5s cubic-bezier(0.1, 0.8, 0.7, 1), opacity 0.5s ease-out'
             });
             
             const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 50 + 30;
+            const distance = Math.random() * 80 + 40; // 더 멀리 퍼지도록
             const translateX = Math.cos(angle) * distance;
             const translateY = Math.sin(angle) * distance;
 
             effectsContainer.appendChild(particle);
 
             requestAnimationFrame(() => {
-                particle.style.transform = `translate(${translateX}px, ${translateY}px) rotate(${Math.random() * 360}deg)`;
+                particle.style.transform = `translate(${translateX}px, ${translateY}px) scale(0)`;
                 particle.style.opacity = '0';
             });
 
@@ -1717,7 +1736,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createCardElement(index) { const c = document.createElement('div'); c.className = 'card'; c.dataset.index = index; return c; }
     
-    // [NEW] 드래그 성능 최적화를 위한 헬퍼 함수
     function getIndexFromCoords(x, y) {
         if (!boardRect || x < boardRect.left || x > boardRect.right || y < boardRect.top || y > boardRect.bottom) {
             return -1;
@@ -1743,7 +1761,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return row * COLS + col;
     }
 
-    // [MODIFIED] 드래그 시작 함수 (최적화 및 기준점 변경 적용)
     function handleDragStart(e) {
         if (isProcessing || isDragging) return;
         const card = e.target.closest('.card');
@@ -1753,7 +1770,6 @@ document.addEventListener('DOMContentLoaded', () => {
         draggedCardEl = card;
         dragStartRect = card.getBoundingClientRect();
         
-        // --- 드래그 성능 최적화를 위한 계산 (시작 시 한 번만) ---
         boardRect = gameBoardEl.getBoundingClientRect();
         const firstCardRect = gameBoardEl.children[0]?.getBoundingClientRect();
         const secondCardRect = gameBoardEl.children[1]?.getBoundingClientRect();
@@ -1767,7 +1783,6 @@ document.addEventListener('DOMContentLoaded', () => {
             paddingSize.x = parseFloat(computedStyle.paddingLeft);
             paddingSize.y = parseFloat(computedStyle.paddingTop);
         }
-        // --- 계산 끝 ---
         
         dragClone = card.cloneNode(true);
         Object.assign(dragClone.style, { 
@@ -1792,11 +1807,9 @@ document.addEventListener('DOMContentLoaded', () => {
         animationFrameId = requestAnimationFrame(onDragAnimation);
     }
 
-    // [MODIFIED] 드래그 애니메이션 함수 (터치 기준점 변경)
     function onDragAnimation() {
         if (!isDragging || !dragClone) return;
         
-        // 현재 커서 위치에 카드의 우측 하단이 오도록 transform 계산
         const translateX = currentX - dragStartRect.left - dragStartRect.width;
         const translateY = currentY - dragStartRect.top - dragStartRect.height;
         
@@ -1805,20 +1818,30 @@ document.addEventListener('DOMContentLoaded', () => {
         animationFrameId = requestAnimationFrame(onDragAnimation);
     }
 
-    // [MODIFIED] 드래그 이동 함수 (최적화 적용)
+    // [MODIFIED] 드래그 미리보기 위치 수정
     function handleDragMove(e) {
         if (!isDragging || !dragClone) return;
         if (e.cancelable) e.preventDefault();
         
-        const touch = e.touches ? e.touches[0] : e;
-        currentX = touch.clientX; 
-        currentY = touch.clientY;
+        const touchOrMouse = e.touches ? e.touches[0] : e;
+        currentX = touchOrMouse.clientX; 
+        currentY = touchOrMouse.clientY;
         
+        let previewX = currentX;
+        let previewY = currentY;
+
+        // 터치 이벤트인 경우, 드래그 중인 카드의 중심을 기준으로 미리보기 위치를 계산
+        if (e.touches) {
+            const cloneRect = dragClone.getBoundingClientRect();
+            previewX = cloneRect.left + cloneRect.width / 2;
+            previewY = cloneRect.top + cloneRect.height / 2;
+        }
+
         if(lastHoveredIndex !== -1 && gameBoardEl.children[lastHoveredIndex]) {
             gameBoardEl.children[lastHoveredIndex].classList.remove('merge-preview', 'swap-preview');
         }
 
-        const newHoveredIndex = getIndexFromCoords(touch.clientX, touch.clientY);
+        const newHoveredIndex = getIndexFromCoords(previewX, previewY);
         const targetCard = newHoveredIndex !== -1 ? gameBoardEl.children[newHoveredIndex] : null;
         
         if (targetCard && newHoveredIndex !== -1 && targetCard !== draggedCardEl) {
@@ -1831,7 +1854,6 @@ document.addEventListener('DOMContentLoaded', () => {
         lastHoveredIndex = newHoveredIndex;
     }
 
-    // [MODIFIED] 드래그 종료 함수 (최적화 적용)
     function handleDragEnd(e) {
         if (!isDragging) return;
 
@@ -1913,11 +1935,10 @@ document.addEventListener('DOMContentLoaded', () => {
             toEl.style.opacity = '0';
             fromEl.style.opacity = '0';
 
-            dragClone.style.transition = 'transform 0.3s ease-out';
-            
-            const finalTranslateX = toRect.left - dragStartRect.left;
-            const finalTranslateY = toRect.top - dragStartRect.top;
-            dragClone.style.transform = `translate(${finalTranslateX}px, ${finalTranslateY}px) scale(1)`;
+            dragClone.style.transition = 'left 0.3s ease-out, top 0.3s ease-out, transform 0.3s ease-out';
+            dragClone.style.left = `${toRect.left}px`;
+            dragClone.style.top = `${toRect.top}px`;
+            dragClone.style.transform = 'translate(0, 0) scale(1)';
 
             const deltaX = fromRect.left - toRect.left;
             const deltaY = fromRect.top - toRect.top;
