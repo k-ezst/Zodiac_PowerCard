@@ -177,7 +177,6 @@
         
         .target-label {
             position: absolute;
-            /* [MODIFIED] Target 글자 위치 조정 */
             bottom: -17px;
             font-size: 0.8em;
             font-weight: bold;
@@ -646,6 +645,16 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // [MODIFIED] 아이폰 확대 버그 수정
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+        }
+        lastTouchEnd = now;
+    }, false);
+
     const startScreen = document.getElementById('start-screen');
     const startButton = document.getElementById('start-button');
     const gameContainer = document.getElementById('game-container');
@@ -667,7 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let targetReached = false;
     let animalSelectionCallback = null;
     let cardAnimatingState;
-    // [NEW] 새로고침 비용 변수
     let shopRerollCost;
     let relicRerollCost;
 
@@ -1001,9 +1009,8 @@ document.addEventListener('DOMContentLoaded', () => {
             gold += 10;
         }
 
-        // [NEW] 새로고침 비용 초기화
         shopRerollCost = 100;
-        relicRerollCost = 100;
+        relicRerollCost = 500; // [MODIFIED] 유물 새로고침 비용 변경
 
         targetReached = false;
         currentBoss = null;
@@ -1021,18 +1028,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (relics.shedSkinOnceMore) tempBuffs.snakeSkinUsed = 0;
         else if (relics.snakeShedSkin) tempBuffs.snakeSkinUsed = false;
 
-        // [MODIFIED] 목표 점수 공식 수정
+        // [MODIFIED] 목표 점수 공식 수정 (절반으로 감소)
         if (currentBoss) {
             targetScore = 0;
         } else {
+            let calculatedScore;
             const baseLinear = 1000 + (stage - 1) * 600;
             if (stage <= 20) {
-                targetScore = Math.floor(baseLinear * 3);
+                calculatedScore = Math.floor(baseLinear * 3);
             } else {
                 const stage20Score = (1000 + (19 * 600)) * 3;
                 const stagesAfter20 = stage - 20;
-                targetScore = Math.floor(stage20Score * Math.pow(1.07, stagesAfter20));
+                calculatedScore = Math.floor(stage20Score * Math.pow(1.07, stagesAfter20));
             }
+            targetScore = Math.floor(calculatedScore / 2); // 최종 점수 절반으로
         }
         
         if (relics.trainingWeight) targetScore = Math.floor(targetScore * 1.1);
@@ -1366,12 +1375,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return { grade: 'D', comment: '성장의 여지가 많습니다!' };
     }
 
-    // [NEW] 상점 새로고침 핸들러
     function handleShopReroll() {
         const btn = document.getElementById('reroll-shop-button');
         if (gold >= shopRerollCost) {
             gold -= shopRerollCost;
-            shopRerollCost = Math.floor(shopRerollCost * 1.5); // 비용 증가
+            shopRerollCost = Math.floor(shopRerollCost * 1.5);
             document.getElementById('shop-gold').textContent = gold;
             populateShop();
             btn.textContent = `상점 새로고침 (${shopRerollCost}G)`;
@@ -1486,21 +1494,20 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltipModal.classList.add('show');
     }
     
-    // [NEW] 유물 새로고침 핸들러
     function handleRelicReroll() {
         const btn = document.getElementById('reroll-relic-button');
         if (gold >= relicRerollCost) {
             gold -= relicRerollCost;
             relicRerollCost = Math.floor(relicRerollCost * 1.5);
+            document.querySelector('#relic-selection-content p').innerHTML = `다음 스테이지를 위한 유물을 하나 선택하세요. (보유 골드: <span style="color: var(--gold-color);">${gold}G</span>)`;
             populateRelicChoices();
         }
     }
 
-    // [MODIFIED] 유물 선택 화면 로직 분리
     function populateRelicChoices() {
         const relicItemsContainer = document.getElementById('relic-items');
         if (!relicItemsContainer) return;
-        relicItemsContainer.innerHTML = ''; // Clear previous choices
+        relicItemsContainer.innerHTML = '';
 
         const available = Object.entries(allRelics).filter(([key]) => !relics[key]);
         const selection = available.sort(() => 0.5 - Math.random()).slice(0, 3);
@@ -1549,7 +1556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleRelicSelection(e) {
         const target = e.target.closest('.relic-item');
         if (!target) {
-            // If the click was not on an item, re-add the listener
             document.getElementById('relic-items').addEventListener('click', handleRelicSelection, { once: true });
             return;
         };
