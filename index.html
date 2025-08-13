@@ -1027,19 +1027,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (relics.shedSkinOnceMore) tempBuffs.snakeSkinUsed = 0;
         else if (relics.snakeShedSkin) tempBuffs.snakeSkinUsed = false;
 
+        // [MODIFIED] 목표 점수 공식 재조정
         if (currentBoss) {
             targetScore = 0;
         } else {
-            let calculatedScore;
-            const baseLinear = 1000 + (stage - 1) * 600;
             if (stage <= 20) {
-                calculatedScore = Math.floor(baseLinear * 3);
-            } else {
-                const stage20Score = (1000 + (19 * 600)) * 3;
-                const stagesAfter20 = stage - 20;
-                calculatedScore = Math.floor(stage20Score * Math.pow(1.07, stagesAfter20));
+                const startScore = 1500; // Stage 1 score
+                const endScore = 100000; // Stage 20 score
+                const growthFactor = Math.pow(endScore / startScore, 1 / 19);
+                targetScore = Math.floor(startScore * Math.pow(growthFactor, stage - 1));
+            } else { // stage > 20
+                const startScore = 100000; // Stage 20 score
+                const endScore = 10000000; // Stage 40 score
+                const growthFactor = Math.pow(endScore / startScore, 1 / 20);
+                targetScore = Math.floor(startScore * Math.pow(growthFactor, stage - 20));
             }
-            targetScore = Math.floor(calculatedScore / 2); 
         }
         
         if (relics.trainingWeight) targetScore = Math.floor(targetScore * 1.1);
@@ -1613,8 +1615,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         switch(combo.animal) {
             case '🐭': finalNumber += Math.round(combo.indices.length * 15 * multiplier); break;
-            // [MODIFIED] 밸런스 조정: 호랑이 효과를 곱셈에서 덧셈으로 변경
-            case '🐯': finalNumber += Math.round((50 + stage * 10) * multiplier); break;
+            // [MODIFIED] 밸런스 조정: 호랑이 효과 원복
+            case '🐯': finalNumber = Math.round(sum * (relics.dragonsOrb ? 1.5 : 1.2)); break;
         }
 
         board[targetIndex] = { type: 'normal', animal: combo.animal, number: finalNumber, isNew: true };
@@ -2066,7 +2068,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => auraEl.remove(), 800);
     }
 
-    // [MODIFIED] 플로팅 텍스트 겹침 문제 해결
     function showFloatingText(text, index, type) {
         const effectsContainer = document.getElementById('html-effects-layer');
         const cardEl = gameBoardEl.children[index];
@@ -2077,9 +2078,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let topOffset = 0;
         if (type === 'gimmick' || type === 'effect') {
-            topOffset = -rect.height * 0.25; // 위로
+            topOffset = -rect.height * 0.25;
         } else if (type === 'score') {
-            topOffset = rect.height * 0.25; // 아래로
+            topOffset = rect.height * 0.25;
         }
 
         const textEl = document.createElement('div');
@@ -2167,7 +2168,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
     }
 
-    // [MODIFIED] 밸런스 조정: 점수 계산 공식 수정
     function calculateScoreForCombo(combo, numberSum) { 
         let len = combo.indices.length; 
         if (relics.zodiacBlessing) len++; 
@@ -2184,7 +2184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(relics.flockTogether && combo.animal === '🐑') baseScore *= (1 + (combo.indices.length * 0.02));
         if(relics.miceCrumbs && len === 3) baseScore *= 1.1;
 
-        return Math.floor(baseScore); // 최종 3배 보너스 삭제
+        return Math.floor(baseScore) * 3; // 점수 3배 보너스 복원
     }
 
     function getNeighborIndices(indices, eightWay = false) { const n=new Set(); const d=eightWay?[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]:[[-1,0],[1,0],[0,-1],[0,1]]; indices.forEach(i=>{const r=Math.floor(i/COLS),c=i%COLS; d.forEach(([dr,dc])=>{const nr=r+dr,nc=c+dc; if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS)n.add(nr*COLS+nc);});}); return Array.from(n).filter(idx => !indices.includes(idx)); }
